@@ -1,0 +1,119 @@
+﻿mOffice — SUÍTE DE ESCRITÓRIO (mTexto, mPlanilha, mSlides)
+==========================================================
+
+Leia estes termos antes de instalar. Ao instalar ou usar o mOffice, você
+concorda com eles, inclusive com os termos da Microsoft para o runtime
+WebView2 descritos abaixo.
+
+
+O QUE É O mOffice
+------------------
+
+O mOffice é uma suíte de escritório para Windows com três aplicativos:
+mTexto (documentos), mPlanilha (planilhas) e mSlides (apresentações).
+Ele abre, edita e salva documentos no próprio computador, sem enviar os
+documentos para a internet.
+
+O mOffice é baseado no ONLYOFFICE Desktop Editors versão 9.4.0.129,
+desenvolvido originalmente por Ascensio System SIA. Ele é uma VERSÃO
+MODIFICADA: não é o ONLYOFFICE Desktop Editors, não é publicado nem
+endossado pela Ascensio System SIA e não deve ser confundido com o
+produto original. O mOffice redistribui o motor de edição do ONLYOFFICE
+(o conversor x2t e os editores sdkjs e web-apps) dentro de uma casca
+própria, escrita do zero. As modificações feitas no motor estão listadas,
+arquivo a arquivo e com data, em licencas\MODIFICACOES-ONLYOFFICE.md.
+
+
+LICENÇA E CÓDIGO-FONTE
+-----------------------
+
+O mOffice é software livre, distribuído sob a GNU Affero General Public
+License versão 3 (AGPL-3.0), a mesma licença do ONLYOFFICE. Você pode
+usá-lo, estudá-lo, modificá-lo e redistribuí-lo nos termos dessa
+licença.
+
+O código-fonte completo do mOffice está publicado em:
+
+  github.com/maiconbiondo/moffice-desktop
+
+O arquivo FONTE-CORRESPONDENTE.md, publicado nesse repositório e junto de
+cada versão, aponta a fonte exata dos componentes do ONLYOFFICE
+redistribuídos e das modificações feitas neles.
+
+Os textos completos das licenças, do mOffice e de cada componente de
+terceiros, ficam na pasta "licencas" da instalação. A lista de todos os
+componentes, com versão e licença, está em licencas\INVENTARIO.md e na
+tela "Sobre" de cada aplicativo.
+
+
+MARCAS
+------
+
+ONLYOFFICE is a trademark of Ascensio System SIA.
+
+O nome ONLYOFFICE aparece aqui apenas para identificar a origem do
+software do qual o mOffice deriva, como a própria licença exige. A
+AGPL-3.0 não concede nenhum direito sobre as marcas, logotipos ou
+identidade visual da Ascensio System SIA, e o mOffice não usa nenhum
+deles: nome, ícones, cores e identidade visual são próprios. Detalhes em
+licencas\AVISO-ONLYOFFICE.txt.
+
+Microsoft, Windows, Microsoft Edge e WebView2 são marcas do grupo de
+empresas Microsoft. O mOffice não é produzido nem endossado pela
+Microsoft.
+
+
+RUNTIME MICROSOFT EDGE WEBVIEW2
+-------------------------------
+
+O mOffice inclui o Microsoft Edge WebView2 Runtime (Fixed Version),
+versão 153.0.4234.48, um software da Microsoft Corporation redistribuído
+junto com o mOffice e licenciado pela Microsoft, não pelo mOffice. Os
+termos de licença da Microsoft para esse runtime estão reproduzidos,
+na íntegra e no original em inglês, em:
+
+  licencas\LICENCA-WebView2-Runtime.txt
+
+A seção 2(b)(ii) desses termos exige que quem recebe o runtime concorde
+com termos que protejam o runtime e a Microsoft no mínimo tanto quanto
+os termos da própria Microsoft. Por isso, ao instalar ou usar o mOffice,
+você concorda que o seu uso do runtime WebView2 está sujeito a esses
+termos da Microsoft, entre eles:
+
+  - o runtime é licenciado, não vendido, e a Microsoft reserva todos os
+    direitos não concedidos expressamente (seção 3);
+  - você não pode contornar limitações técnicas do runtime; fazer
+    engenharia reversa, descompilar ou desmontar o runtime, exceto na
+    medida exigida pelas licenças de componentes de código aberto nele
+    incluídos; remover ou alterar avisos da Microsoft ou de seus
+    fornecedores; usá-lo contra a lei; nem compartilhá-lo, publicá-lo,
+    distribuí-lo, alugá-lo ou oferecê-lo como produto separado
+    (seção 3);
+  - você deve cumprir as leis de exportação aplicáveis (seção 5);
+  - a Microsoft não é obrigada a prestar suporte (seção 6);
+  - o runtime é fornecido "NO ESTADO EM QUE SE ENCONTRA" ("AS IS"): a
+    Microsoft não dá garantias expressas e, na medida permitida pela
+    lei aplicável, exclui as garantias implícitas (seção 13);
+  - a responsabilidade da Microsoft e de seus fornecedores é limitada
+    nos termos da seção 14.
+
+Os termos da Microsoft prevalecem sobre este resumo. O mOffice desliga o
+Microsoft Defender SmartScreen do runtime (seção 4(b) dos termos da
+Microsoft); por isso o aviso da seção 8 desses termos não se aplica.
+
+
+SEM GARANTIA
+------------
+
+O mOffice é distribuído na esperança de ser útil, mas SEM NENHUMA
+GARANTIA, nem mesmo a garantia implícita de COMERCIALIZAÇÃO ou de
+ADEQUAÇÃO A UMA FINALIDADE ESPECÍFICA, na medida permitida pela lei
+aplicável. O programa é fornecido "no estado em que se encontra", e
+todo o risco quanto à qualidade e ao desempenho dele é seu. Em nenhum
+caso, salvo quando exigido pela lei aplicável, qualquer detentor de
+direitos autorais ou quem modifique ou redistribua o programa será
+responsável por danos decorrentes do uso ou da impossibilidade de uso
+do programa. Os termos exatos estão nas seções 15 e 16 da AGPL-3.0, em
+licencas\LICENCA-mOffice-AGPL-3.0.txt.
+
+Faça cópias de segurança dos seus documentos importantes.

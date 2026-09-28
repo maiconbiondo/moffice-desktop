@@ -1,0 +1,44 @@
+libxml2, identificado por texto embutido nos binarios de motor\converter do core ONLYOFFICE 9.4.0.129
+durante a varredura da Task 4.
+
+VERSAO NAO DETERMINADA: ao contrario de V8, Boost, FreeType, HarfBuzz, Crypto++, Gumbo e Katana, o
+libxml2 NAO aparece no Common/3dParty nem no 3DPARTY.md do repositorio ONLYOFFICE/core na tag v9.4.0.129 -
+nao ha pasta, fetch script nem entrada de licenca dedicados a ele nesse repositorio. Isso sugere que a
+string encontrada no binario pode vir de um componente que embute o libxml2 (nao identificado nesta
+tarefa) ou de uma referencia indireta, e nao de um vendoring direto documentado pelo ONLYOFFICE. Por
+instrucao explicita da tarefa, o texto abaixo e' o da licenca do ramo/tag estavel mais proximo do projeto
+oficial, para nao deixar o componente citado no binario sem cobertura de licenca.
+ORIGEM DO TEXTO ABAIXO: arquivo Copyright do repositorio oficial gitlab-espelhado em
+github.com/GNOME/libxml2, branch master, obtido de
+https://raw.githubusercontent.com/GNOME/libxml2/master/Copyright em 2026-09-27. O texto (licenca MIT) e'
+estavel ha decadas nas versoes 2.x do libxml2.
+Licenca: MIT.
+
+===============================================================================
+Copyright (libxml2, branch master) - texto verbatim
+===============================================================================
+
+Except where otherwise noted in the source code (e.g. the files dict.c and
+list.c, which are covered by a similar licence but with different Copyright
+notices) all the files are:
+
+ Copyright (C) 1998-2012 Daniel Veillard.  All Rights Reserved.
+ Copyright (C) The Libxml2 Contributors.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is fur-
+nished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FIT-
+NESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

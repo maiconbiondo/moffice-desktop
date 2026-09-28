@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>mOffice.Sonda</RootNamespace>
+    <!-- Executavel de APOIO (sonda, opcao salvar, opcao medir) usado pelos scripts de tools/ e pelos gates.
+         Nao e' um dos tres aplicativos do produto (Plano 2). -->
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\mOffice.Nucleo\mOffice.Nucleo.csproj" />
+  </ItemGroup>
+</Project>

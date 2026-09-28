@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- UseWPF=true estreita os ImplicitUsings padrao (nao inclui System.IO) - licao do mPDF (observacao 6 do log de skills). -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <!-- Corretor ortografico (Task 1 do Plano 3): porte .NET puro do Hunspell, sem codigo nativo e sem rede.
+         Licenca MPL 1.1 / GPL 2.0 / LGPL 2.1 (herdada do Hunspell) - docs/licencas. -->
+    <PackageReference Include="WeCantSpell.Hunspell" Version="7.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\mOffice.Conversor\mOffice.Conversor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Ponte\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- So para o seam de teste de JanelaEditor.EsperarLocalFileSaveAsync (achado 1 da revisao 2026-09-17,
+         fix review 2): SalvarComoAsync inteiro precisa de janela real (WebView2), mas o mapeamento de
+         excecao em torno do cancelamento do TCS de salvamento nao precisa, e o teste headless disso exige
+         um metodo internal. -->
+    <InternalsVisibleTo Include="mOffice.Nucleo.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><title>ponte-teste</title></head><body>
+<script src="ponte-teste.js"></script>
+<script>
+  window.resultado = "pendente";
+  window.egresso = "pendente";
+  (async function () {
+    try {
+      var b64 = await chrome.webview.hostObjects.arquivos.LerBase64(new URLSearchParams(window.location.search).get("arquivo") || "");
+      window.resultado = "lido:" + atob(b64);
+    } catch (e) { window.resultado = "erro:" + e; }
+    try {
+      var r = await fetch("https://example.com/telemetria");
+      window.egresso = "status:" + r.status;
+    } catch (e) { window.egresso = "erro:" + e.name; }
+  })();
+</script></body></html>

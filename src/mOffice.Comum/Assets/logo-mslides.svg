@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Documentacao: mesma geometria/cores do DrawingImage "Logo.mSlides" em Temas/mOfficeTema.xaml (fonte
+     da verdade). Nao e' lido em runtime pelo app; serve o instalador/design e a geracao do .ico. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect x="38" y="16" width="180" height="224" rx="15" ry="15" fill="#C0392B"/>
+    <path d="M176,16 L218,16 L218,58 Z" fill="#7B241C"/>
+    <!-- Slide 16:9 com barra de titulo verde-água por cima. -->
+    <rect x="58" y="70" width="140" height="79" rx="6" ry="6" fill="#F5B7B1"/>
+    <rect x="58" y="54" width="140" height="10" rx="3" ry="3" fill="#FFFFFF"/>
+</svg>

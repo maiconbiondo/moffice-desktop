@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- O MSBuild para no PRIMEIRO Directory.Build.props que acha subindo a arvore: sem este Import
+       explicito, o da RAIZ (Deterministic + PathMap) deixaria de valer para tudo em src/ — os binarios
+       entregues voltariam a embutir o caminho pessoal da maquina de build. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <!-- Versao UNICA do produto (mTexto, mPlanilha, mSlides, mOffice.*). Nenhum .csproj de src/ declara
+         <Version> proprio; o AplicativoOffice.Versao le daqui pelo assembly do Comum, e o instalador do
+         Plano 5 le deste arquivo. -->
+    <Version>0.99.0</Version>
+  </PropertyGroup>
+
+</Project>

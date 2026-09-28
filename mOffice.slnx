@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/mOffice.Comum/mOffice.Comum.csproj" />
+    <Project Path="src/mOffice.Conversor/mOffice.Conversor.csproj" />
+    <Project Path="src/mOffice.Nucleo/mOffice.Nucleo.csproj" />
+    <Project Path="src/mOffice.Sonda/mOffice.Sonda.csproj" />
+    <Project Path="src/mTexto/mTexto.csproj" />
+    <Project Path="src/mPlanilha/mPlanilha.csproj" />
+    <Project Path="src/mSlides/mSlides.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/mOffice.Comum.Tests/mOffice.Comum.Tests.csproj" />
+    <Project Path="tests/mOffice.Conversor.Tests/mOffice.Conversor.Tests.csproj" />
+    <Project Path="tests/mOffice.Nucleo.Tests/mOffice.Nucleo.Tests.csproj" />
+  </Folder>
+</Solution>

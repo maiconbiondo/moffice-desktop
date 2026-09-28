@@ -1,0 +1,27 @@
+<Project>
+
+  <!--
+    Build determinístico + normalização de caminho para TODOS os projetos do repo.
+
+    Deterministic=true: o compilador não embute caminhos absolutos da máquina de
+    build nem timestamps variáveis nos binários; a saída passa a depender só das
+    entradas.
+
+    PathMap: remapeia o caminho absoluto da raiz do repositório (que na máquina de
+    build contém o nome pessoal do desenvolvedor, ex.: "D:\...\mPDF\") para um token
+    neutro "/src/" nos símbolos gravados em .pdb/.dll/.exe. Assim os artefatos
+    ENTREGUES (que o instalador empacota) não vazam o caminho de build.
+
+    $(MSBuildThisFileDirectory) resolve para a pasta deste arquivo (a raiz do repo)
+    COM a barra final, então o mapeamento cobre o prefixo exato do caminho.
+
+    Uma guarda pós-publish em tools/installer/build-installer.ps1 varre a pasta de
+    publish por resíduos do caminho pessoal e ABORTA o build se achar algum — é a
+    prova real de que a normalização funcionou.
+  -->
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildThisFileDirectory)=/src/</PathMap>
+  </PropertyGroup>
+
+</Project>

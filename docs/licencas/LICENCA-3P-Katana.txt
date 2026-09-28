@@ -1,0 +1,38 @@
+Katana (parser CSS), buscado pelo build do core ONLYOFFICE 9.4.0.129 para o modulo de conversao HTML
+(identificado por texto embutido nos binarios de motor\converter).
+
+ORIGEM DA VERSAO: arquivo Common/3dParty/html/fetch.py do repositorio ONLYOFFICE/core, tag v9.4.0.129, faz
+"git clone https://github.com/jasenhuang/katana-parser.git" seguido de checkout do commit
+be6df458d4540eee375c513958dcb862a391cdd1, com patches locais em src/tokenizer.c, src/parser.c e
+src/foundation.c.
+ORIGEM DO TEXTO ABAIXO: arquivo LICENSE do repositorio oficial github.com/jasenhuang/katana-parser, no
+commit be6df458d4540eee375c513958dcb862a391cdd1 exato pinado pelo core, obtido de
+https://raw.githubusercontent.com/jasenhuang/katana-parser/be6df458d4540eee375c513958dcb862a391cdd1/LICENSE
+em 2026-09-27. Tambem documentado em 3DPARTY.md da raiz do repositorio ONLYOFFICE/core ("katana - MIT").
+Licenca: MIT.
+
+===============================================================================
+LICENSE (katana-parser, commit be6df458d4540eee375c513958dcb862a391cdd1) - texto verbatim
+===============================================================================
+
+The MIT License (MIT)
+
+Copyright (c) 2015 Hackers and Painters
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

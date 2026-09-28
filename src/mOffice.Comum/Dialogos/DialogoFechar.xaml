@@ -1,0 +1,53 @@
+<Window x:Class="mOffice.Comum.Dialogos.DialogoFechar"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:mOffice.Comum.Icones"
+        Width="470" SizeToContent="Height" WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False" ResizeMode="NoResize" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" FontFamily="{DynamicResource Fonte.Inter}">
+    <!-- Substitui o MessageBox padrao de JanelaEditor.PerguntarAoFechar (a Task 6 injeta PerguntarAsync).
+         ESTRUTURA do ConfiguracoesDialog do mPDF (header com icone + corpo + rodape). Os tres Content de
+         botao sao STRINGS simples de proposito: e' assim que o teste os identifica. -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/mOffice.Comum;component/Temas/mOfficeTema.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Border Style="{StaticResource mOffice.Dialog.Superficie}" Margin="16">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Background="Transparent" BorderBrush="{DynamicResource Cor.BordaSutil}"
+                    BorderThickness="0,0,0,1" Padding="22,18" MouseLeftButtonDown="Cabecalho_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource mOffice.Dialog.IconeHeader}">
+                        <TextBlock FontFamily="{DynamicResource Fonte.PhosphorFill}" FontSize="17" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" Text="{icons:PhosphorIcon floppy-disk}"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="11,0,0,0">
+                        <TextBlock Text="Salvar as alterações?" Style="{StaticResource mOffice.Dialog.Titulo}"/>
+                        <TextBlock x:Name="NomeAppTexto" Style="{StaticResource mOffice.Dialog.Subtitulo}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border DockPanel.Dock="Bottom" Background="{DynamicResource Cor.FundoDialogoRodape}"
+                    BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,13,13" Padding="22,16">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Salvar" Click="Salvar_Click" Margin="0,0,8,0"
+                            Style="{StaticResource mOffice.Button.DialogPrimario}"/>
+                    <Button Content="Não salvar" Click="NaoSalvar_Click" Margin="0,0,8,0"
+                            Style="{StaticResource mOffice.Button.DialogNeutro}"/>
+                    <!-- Cancelar NAO tem Click: Decisao ja' nasce Cancelar, e IsCancel faz o Esc e o
+                         clique fecharem pelo caminho do proprio Window (mesmo padrao do mPDF). -->
+                    <Button Content="Cancelar" IsCancel="True"
+                            Style="{StaticResource mOffice.Button.DialogCancelar}"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock x:Name="PerguntaTexto" Margin="24,22" TextWrapping="Wrap" FontSize="12.5" LineHeight="19"
+                       Foreground="{DynamicResource Cor.TextoPrimario}"/>
+        </DockPanel>
+    </Border>
+</Window>

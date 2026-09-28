@@ -1,0 +1,252 @@
+<UserControl x:Class="mOffice.Comum.Telas.TelaBoasVindas"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:icons="clr-namespace:mOffice.Comum.Icones"
+             xmlns:conv="clr-namespace:mOffice.Comum.Conversores"
+             AllowDrop="True" Drop="Tela_Drop" DragOver="Tela_DragOver">
+    <!-- Estado vazio / boas-vindas dos tres apps (Marco 1, Plano 2, Task 5). ESTRUTURA copiada de
+         src/mPdf.App/Views/WelcomeView.xaml do mPDF (logo com glow, drop zone, lista RECENTES); o
+         CONTEUDO e' o da suite: "Novo documento"/"Abrir…" no lugar de "Juntar"/"Assinar em lote", e
+         cada recente com fixar/remover. DataContext = TelaBoasVindasViewModel.
+         Mescla o tema LOCALMENTE (mesma razao do mPDF: Application.Current e' null nas sondas STA que
+         constroem esta tela direto, e os StaticResource mOffice.* precisam resolver no parse). Os
+         TOKENS (Cor.*) NAO vem daqui — chegam por DynamicResource, do app (ou do teste). -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/mOffice.Comum;component/Temas/mOfficeTema.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:CaminhoParaNomeConverter x:Key="CaminhoParaNome"/>
+            <conv:CaminhoParaPastaConverter x:Key="CaminhoParaPasta"/>
+            <conv:NuloParaColapsadoConverter x:Key="NuloParaColapsado"/>
+            <conv:ChaveParaRecursoConverter x:Key="ChaveParaRecurso"/>
+            <BooleanToVisibilityConverter x:Key="VerdadeiroParaVisivel"/>
+
+            <!-- "push-pin" NAO esta no mapa de 58 icones (Icones/Ph.cs), e Ph.Glyph lanca de proposito
+                 num nome ausente — entao o botao de fixar e' TEXTO ("Fixar"/"Fixado"), nao um glifo. -->
+            <Style x:Key="BotaoFixar" TargetType="ToggleButton" BasedOn="{StaticResource mOffice.Toggle.Command}">
+                <Setter Property="Width" Value="62"/>
+                <Setter Property="Height" Value="26"/>
+                <Setter Property="FontSize" Value="10.5"/>
+                <Setter Property="Content" Value="Fixar"/>
+                <Style.Triggers>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="Content" Value="Fixado"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="BotaoRemover" TargetType="Button" BasedOn="{StaticResource mOffice.Button.Toolbar}">
+                <Setter Property="Width" Value="26"/>
+                <Setter Property="Height" Value="26"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="FontFamily" Value="{DynamicResource Fonte.Phosphor}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Foreground" Value="{DynamicResource Cor.TextoSecundario}"/>
+            </Style>
+            <!-- Botoes da linha de um documento recuperado: os estilos grandes da drop zone, compactados. -->
+            <Style x:Key="BotaoRecuperar" TargetType="Button" BasedOn="{StaticResource mOffice.Button.Primario}">
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="12,0"/>
+                <Setter Property="FontSize" Value="11.5"/>
+            </Style>
+            <Style x:Key="BotaoDescartar" TargetType="Button" BasedOn="{StaticResource mOffice.Button.Contornado}">
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="10,0"/>
+                <Setter Property="FontSize" Value="11.5"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <!-- Fundo theme-aware (Cor.FundoBoasVindasGrad): vinheta azul-marinho no escuro, creme no claro. -->
+    <Grid Background="{DynamicResource Cor.FundoBoasVindasGrad}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40">
+
+                <!-- Logo com glow. A CHAVE do logo varia por app (Logo.mTexto/mPlanilha/mSlides), e
+                     StaticResource nao aceita chave de binding -> ChaveParaRecursoConverter, com o
+                     proprio UserControl como escopo de busca (o tema esta mesclado AQUI). -->
+                <Image Width="74" Height="74" HorizontalAlignment="Center">
+                    <Image.Source>
+                        <MultiBinding Converter="{StaticResource ChaveParaRecurso}">
+                            <Binding Path="ChaveLogo"/>
+                            <Binding RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}"/>
+                        </MultiBinding>
+                    </Image.Source>
+                    <Image.Effect>
+                        <DropShadowEffect Color="#4D8FD6" BlurRadius="30" ShadowDepth="0" Opacity="0.55"/>
+                    </Image.Effect>
+                </Image>
+                <TextBlock Text="{Binding Titulo}" FontSize="28" FontWeight="SemiBold" Foreground="{DynamicResource Cor.TextoPrimario}"
+                           HorizontalAlignment="Center" Margin="0,20,0,6"/>
+                <TextBlock Text="{Binding Subtitulo}" FontSize="13"
+                           Foreground="{DynamicResource Cor.TextoSecundario}" HorizontalAlignment="Center" Margin="0,0,0,24"/>
+
+                <!-- Faixa de erro (recente que sumiu do disco). Colapsada enquanto MensagemErro e' nula. -->
+                <Border Width="440" CornerRadius="9" Padding="14,10" Margin="0,0,0,14"
+                        Background="{DynamicResource Cor.Erro}"
+                        Visibility="{Binding MensagemErro, Converter={StaticResource NuloParaColapsado}}">
+                    <TextBlock Text="{Binding MensagemErro}" TextWrapping="Wrap" FontSize="12"
+                               Foreground="{DynamicResource Cor.PrimariaTextoSobre}"/>
+                </Border>
+
+                <!-- Drop zone azul (o Border do WPF nao traceja; borda continua azul translucida, como no
+                     mPDF). Recebe o Drop via AllowDrop no UserControl raiz. -->
+                <Border Width="440" CornerRadius="14" Padding="32" Background="#0D4D8FD6" BorderThickness="1.5">
+                    <Border.BorderBrush>
+                        <SolidColorBrush Color="#4D8FD6" Opacity="0.5"/>
+                    </Border.BorderBrush>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock FontFamily="{DynamicResource Fonte.Phosphor}" FontSize="32" Foreground="{DynamicResource Cor.IconeAzul}"
+                                   Text="{icons:PhosphorIcon file-arrow-up}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Arraste um arquivo aqui para abrir" FontSize="13"
+                                   Foreground="{DynamicResource Cor.TextoSecundario}" HorizontalAlignment="Center" Margin="0,14,0,0"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                            <Button Command="{Binding NovoCommand}" Style="{StaticResource mOffice.Button.Primario}" Margin="0,0,5,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontFamily="{DynamicResource Fonte.PhosphorBold}" FontSize="15" Text="{icons:PhosphorIcon plus}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Novo documento" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding AbrirCommand}" Style="{StaticResource mOffice.Button.Contornado}" Margin="5,0,0,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontFamily="{DynamicResource Fonte.Phosphor}" FontSize="15" Foreground="{DynamicResource Cor.IconeAzul}" Text="{icons:PhosphorIcon folder-open}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Abrir…" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Documentos recuperados (Task 3 do Plano 3): o que uma sessao anterior deixou sem salvar
+                     (queda). ACIMA dos recentes e so' com TemRecuperados. Mesma forma de linha dos recentes; os
+                     dois botoes ficam AO LADO da informacao, nunca dentro de outro botao. -->
+                <StackPanel Width="440" Margin="0,34,0,0"
+                            Visibility="{Binding TemRecuperados, Converter={StaticResource VerdadeiroParaVisivel}}">
+                    <TextBlock Text="DOCUMENTOS RECUPERADOS" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Cor.TextoSecundario}"
+                               Opacity="0.8" Margin="2,0,0,4"/>
+                    <TextBlock Text="O mOffice fechou sem salvar estes documentos. Recupere para continuar de onde parou."
+                               FontSize="11" Foreground="{DynamicResource Cor.TextoSecundario}" TextWrapping="Wrap" Margin="2,0,0,10"/>
+                    <ItemsControl ItemsSource="{Binding Recuperados}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,4" BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="1"
+                                        CornerRadius="9" Padding="11,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" FontFamily="{DynamicResource Fonte.Phosphor}" FontSize="18"
+                                                   Foreground="{DynamicResource Cor.IconeAzul}" Text="{icons:PhosphorIcon file-text}"
+                                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Titulo}" FontSize="12.5" Foreground="{DynamicResource Cor.TextoPrimario}"
+                                                           TextTrimming="CharacterEllipsis" MaxWidth="200"/>
+                                                <TextBlock Text=" (não salvo)" FontSize="12.5" Foreground="{DynamicResource Cor.TextoSecundario}"
+                                                           Visibility="{Binding Novo, Converter={StaticResource VerdadeiroParaVisivel}}"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding UltimaAlteracaoLocal, StringFormat=dd/MM/yyyy HH:mm}" FontSize="10.5"
+                                                       Foreground="{DynamicResource Cor.TextoSecundario}" Opacity="0.75"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="Recuperar" Style="{StaticResource BotaoRecuperar}"
+                                                VerticalAlignment="Center" Margin="8,0,0,0"
+                                                Command="{Binding DataContext.RecuperarCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"/>
+                                        <Button Grid.Column="3" Content="Descartar" Style="{StaticResource BotaoDescartar}"
+                                                VerticalAlignment="Center" Margin="6,0,0,0"
+                                                Command="{Binding DataContext.DescartarCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Recentes (a MESMA lista de Recentes.Listar(): fixados primeiro). Cada linha tem UM
+                     botao de abrir (nome+pasta+hora) e, ao lado — NAO dentro dele —, fixar e remover:
+                     botao dentro de botao embaralha o roteamento do clique. -->
+                <StackPanel Width="440" Margin="0,34,0,0">
+                    <TextBlock Text="RECENTES" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Cor.TextoSecundario}"
+                               Opacity="0.8" Margin="2,0,0,10"/>
+                    <ItemsControl ItemsSource="{Binding Recentes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Button Grid.Column="0" HorizontalContentAlignment="Stretch" Cursor="Hand"
+                                            Command="{Binding DataContext.AbrirRecenteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Background="Transparent" BorderBrush="{DynamicResource Cor.BordaSutil}"
+                                                        BorderThickness="1" CornerRadius="9" Padding="11,8">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Cor.SuperficieHover}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" FontFamily="{DynamicResource Fonte.Phosphor}" FontSize="18"
+                                                       Foreground="{DynamicResource Cor.IconeAzul}" Text="{icons:PhosphorIcon file-text}"
+                                                       VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Caminho, Converter={StaticResource CaminhoParaNome}}" FontSize="12.5"
+                                                           Foreground="{DynamicResource Cor.TextoPrimario}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Caminho, Converter={StaticResource CaminhoParaPasta}}" FontSize="10.5"
+                                                           Foreground="{DynamicResource Cor.TextoSecundario}" Opacity="0.75" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding Quando, StringFormat=dd/MM HH:mm}" FontSize="10.5"
+                                                       Foreground="{DynamicResource Cor.TextoSecundario}" Opacity="0.75"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        </Grid>
+                                    </Button>
+
+                                    <!-- IsChecked OneWay: ItemRecente e' um record imutavel; quem vira o
+                                         estado e' o comando (Recentes.Fixar + Recarregar). -->
+                                    <ToggleButton Grid.Column="1" Style="{StaticResource BotaoFixar}" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                  ToolTip="Fixar no topo da lista"
+                                                  IsChecked="{Binding Fixado, Mode=OneWay}"
+                                                  Command="{Binding DataContext.FixarCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                  CommandParameter="{Binding}"/>
+                                    <Button Grid.Column="2" Style="{StaticResource BotaoRemover}" VerticalAlignment="Center" Margin="4,0,0,0"
+                                            ToolTip="Tirar da lista" Content="{icons:PhosphorIcon x}"
+                                            Command="{Binding DataContext.RemoverCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Rodape discreto: Configuracoes e Sobre (tambem no menu da janela, clique direito na barra
+                     de titulo). Moram aqui desde que a barra de comandos acima do editor saiu (2026-09-25). -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,28,0,0">
+                    <Button x:Name="LinkConfiguracoes" Command="{Binding ConfiguracoesCommand}" Content="Configurações"
+                            Style="{StaticResource mOffice.Button.Toolbar}" Margin="0,0,8,0"
+                            Visibility="{Binding TemConfiguracoes, Converter={StaticResource VerdadeiroParaVisivel}}"/>
+                    <Button x:Name="LinkSobre" Command="{Binding SobreCommand}" Content="Sobre"
+                            Style="{StaticResource mOffice.Button.Toolbar}"
+                            Visibility="{Binding TemSobre, Converter={StaticResource VerdadeiroParaVisivel}}"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

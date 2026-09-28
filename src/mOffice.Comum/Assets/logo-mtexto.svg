@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Documentacao: mesma geometria/cores do DrawingImage "Logo.mTexto" em Temas/mOfficeTema.xaml (fonte
+     da verdade). Nao e' lido em runtime pelo app; serve o instalador/design e a geracao do .ico. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect x="38" y="16" width="180" height="224" rx="15" ry="15" fill="#1D4E89"/>
+    <path d="M176,16 L218,16 L218,58 Z" fill="#0F2E52"/>
+    <rect x="58" y="54" width="110" height="14" rx="7" ry="7" fill="#7FA8D9"/>
+    <rect x="58" y="76" width="90" height="14" rx="7" ry="7" fill="#7FA8D9"/>
+    <rect x="58" y="98" width="125" height="14" rx="7" ry="7" fill="#7FA8D9"/>
+    <path d="M58,200 H150" stroke="#3EC1A7" stroke-width="12" stroke-linecap="round"/>
+</svg>

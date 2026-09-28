@@ -1,0 +1,31 @@
+<UserControl x:Class="mOffice.Comum.Telas.FaixaAviso"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:icons="clr-namespace:mOffice.Comum.Icones"
+             xmlns:conv="clr-namespace:mOffice.Comum.Conversores">
+    <!-- So' a faixa de aviso: nada de comandos acima do editor (eles estao no menu Arquivo do editor).
+         Colapsada (altura zero) enquanto Aviso e' nulo. Tema mesclado LOCALMENTE (mesma razao de
+         TelaBoasVindas); tokens por DynamicResource. -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/mOffice.Comum;component/Temas/mOfficeTema.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:NuloParaColapsadoConverter x:Key="NuloParaColapsado"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border x:Name="Faixa" Background="{DynamicResource Cor.Erro}" Padding="12,6,6,6"
+            Visibility="{Binding Aviso, Converter={StaticResource NuloParaColapsado}}">
+        <DockPanel LastChildFill="True">
+            <Button DockPanel.Dock="Right" x:Name="BotaoDispensar" Command="{Binding DispensarCommand}"
+                    ToolTip="Dispensar aviso" Style="{StaticResource mOffice.Button.Toolbar}"
+                    Padding="6,2" VerticalAlignment="Center">
+                <TextBlock Text="{icons:PhosphorIcon x}" FontFamily="{DynamicResource Fonte.Phosphor}"
+                           FontSize="13" Foreground="{DynamicResource Cor.PrimariaTextoSobre}"/>
+            </Button>
+            <TextBlock Text="{Binding Aviso}" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center"
+                       Foreground="{DynamicResource Cor.PrimariaTextoSobre}"/>
+        </DockPanel>
+    </Border>
+</UserControl>

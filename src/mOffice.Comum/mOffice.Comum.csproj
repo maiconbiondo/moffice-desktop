@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>mOffice.Comum</RootNamespace>
+    <!-- Casca e identidade dos tres apps. NUNCA referencia o pacote do WebView2 (ver guarda em FronteiraTests: so' mOffice.Nucleo/mOffice.Sonda podem). -->
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- UseWPF=true estreita os ImplicitUsings padrao (nao inclui System.IO) - licao do mPDF (observacao 6 do log de skills; ver mOffice.Nucleo.csproj). -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\mOffice.Nucleo\mOffice.Nucleo.csproj" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\Fonts\*.ttf" />
+    <!-- Lista de atribuicao do Sobre (espelho de docs/licencas/INVENTARIO.md). -->
+    <EmbeddedResource Include="Dialogos\Atribuicoes.txt" LogicalName="mOffice.Comum.Dialogos.Atribuicoes.txt" />
+    <InternalsVisibleTo Include="mOffice.Comum.Tests" />
+  </ItemGroup>
+</Project>

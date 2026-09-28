@@ -1,0 +1,1650 @@
+Dicionario de ortografia e padroes de hifenizacao pt_BR redistribuidos pelo mOffice.
+
+Pasta no pacote ..: motor\dictionaries\pt_BR (pt_BR.dic, pt_BR.aff, pt_BR.json, hyph_pt_BR.dic), copiada sem
+                    modificacao do pacote do ONLYOFFICE Desktop Editors 9.4.0.129. Os arquivos originais
+                    abaixo tambem viajam, intactos, na propria pasta.
+Licencas .........: dicionario (VERO / Raimundo Moura): GNU LGPL 2.1 (texto integral em
+                    LICENCA-LGPL-2.1.txt); divisor silabico (DivSilab): GNU LGPL 3 e Mozilla Public License
+                    (o mOffice o redistribui sob a LGPL 3: textos integrais em LICENCA-LGPL-3.0.txt e
+                    LICENCA-GPL-3.0.txt); license-thes.readme: licenca estilo BSD de Kevin B. Hendricks.
+
+Abaixo, o texto VERBATIM de cada arquivo da pasta (README_pt_BR.TXT e README_hyph_pt_BR.txt estao em
+ISO-8859-1 no original e foram convertidos para UTF-8 aqui, sem alterar o texto).
+
+===============================================================================
+README_pt_BR.TXT
+===============================================================================
+
+Autor/Author: Raimundo Moura <raimundomoura@openoffice.org>
+
+pt-BR: Este dicionário está em desenvolvimento por Raimundo Moura e sua equipe. Ele está licenciado sob os termos da Licença Pública Geral Menor versão 2.1 (LGPLv2.1), como publicado pela Free Software Foundation. Os créditos estão disponíveis em http://www.broffice.org/creditos e você pode encontrar novas versões em http://www.broffice.org/verortografico.
+
+en-US: This dictionary is under development by Raimundo Moura and his team. It is licensed under the terms of the GNU Lesser General Public License version 2.1 (LGPLv2.1), as published by the Free Software Foundation. The credits are available at http://www.broffice.org/creditos and you can find new releases at http://www.broffice.org/verortografico.
+
+
+Copyright (C) 2006 - 2011 por/by Raimundo Santos Moura <raimundomoura@openoffice.org>
+
+=============
+APRESENTAÇÃO
+=============
+
+O Projeto Verificador Ortográfico do BrOffice.org é um projeto
+colaborativo desenvolvido pela comunidade Brasileira.
+A relação completa dos colaboradores deste projeto está em:
+http://www.broffice.org.br/creditos
+
+***********************************************************************
+* Este é um dicionário para correção ortográfica da língua Portuguesa *
+* para o Myspell.                                                     *
+* Este programa é livre e pode ser redistribuído e/ou modificado nos  *
+* termos da GNU Lesser General Public License (LGPL) versão 2.1.      *
+*                                                                     *
+***********************************************************************
+
+======================
+SOBRE ESTA ATUALIZAÇÃO
+======================
+.Inclusão de amniorreia, amniorreico, andracneia, anguídeo, anguígena,
+ anguilária, anguilulado, anguinha, anguissáurio, anguite, anguivípera,
+ aquíparo, asplenioide, asplenióidea, asplenióideo, bálsamos-do-perúberóideo,
+ caçaboia, calcoide, calcóideo, cireneia, cirroide, cirsoideu, cirsoideia,
+ cirsoide, contraemergente, contraestimulação, dermatorreico, relinquimento,
+ supraesternal, supraoccipital, suprarracional, suprarregional, criptozoico,
+ cistiorreia, contraestai, contrainterpelação, contraoitava, contraescota,
+ dactiloide, delfinoide, dactilozoide, datilozoide, dactilozóideo,
+ ex-domínio, Commonwealth, equíssimo, uretrotromboide, Darmstadtio, Roentgênio,
+ Rutherford, rutherfórdio, IUPAC. Colaboração de João Eduardo Strottmann;
+
+.Inclusão de siglas de elementos químicos:   Ac, Ag, Al, Am, At, Au, Ba,
+ Be, Bh, Bk, Br, Cd, Ce, Cf, Cl, Cn, Cs, Db, Ds, Dy, Er, Fm, Fr, Ga, Gd,
+ Ge, He, Hf, Ho, Hs, Kr, Lr, Md, Mn, Mt, Nb, Nd, Ne, Np, Pa, Pd, Pm, Po,
+ Pr, Pt, Ra, Rb, Rf, Rg, Rh, Rn, Ru, Sb, Sc, Sg, Sn, Tb, Th, Tm, Xe, Yb,
+ Zr. Colaboração de João Eduardo Strottmann;
+.Alterar 'ruterfórdio' para 'rutherfórdio'. Colaboração de João Eduardo Strottmann;
+.Inclusão de 'subarte', 'político-cultural', 'cênico-pedagógica'. Colaboração Larissa M. Moura;
+.Correção de regra em "livre-ocupado/". Colaboração Robson Roberto Souza Peixoto;
+. Inclusão de Albinópolis, Leonarda, pré-diálise retro-orbital. Exclusão de alem, Junior, vitoria e cardio. Colaboração de Eduardo Ribeiro Mundim.
+. Divsilab - Correção da quebra de sílabas das palavras com 'guin', como:
+  'seguintes' - ERRADO(se-gu-in-tes). Colaboração de Flávio Figueiredo  Cardoso;
+. Inclusão de 'sinantrópico', Colaboração de Carlos Eduardo Costa;
+. Exclusão de 'frustar', 'frustado', Colaboração de João Eduardo Strottmann;
+. Inclusão de: Bicalho, calcinose, secularista, ecogenicidade, gastrojejunal, locraniano, neurotoxoplasmose, radioablação, videolaringoestroboscopia, videolaringoscopia. Colaboração Eduardo Mundim;
+. Inclusão de 'prototipação', Colaboração de Vitor Pacheco;
+. Inclusão do verbo 'juridicizar'. Colaboração de João Eduardo Strottmann;
+. Inclusão de 'avolitivos', 'juridicizável', 'juridicizáveis' e 'Pavlov', João Eduardo Strottmann;
+. Correção de 'multiuso' para 'multiúso'. Colaboração de João Eduardo Strottmann;
+Inclusão de: bicorno, juncional, hiperandrogenemia, tiazolidinediona,  
+deidroepiandrosterona, insulinemia, antropilórica e acromegálica. Colaboração de Eduardo Ribeiro Mundim;
+. Inclusão de 800 termos ambientais. Colaboração de Evandro Andrade da Silva;
+. Inclusão de 'semipresencial'. Colaboração de Emerson Borges;
+
+=======================================================
+COMO INSTALAR O VERIFICADOR BRASILEIRO NO BROFFICE.ORG
+=======================================================
+
+Copie os arquivos pt_BR.dic e pt_BR.aff para o diretório <BrOffice.org>
+/share/dict/ooo, onde <BrOffice.org> é o diretório em que o programa 
+foi instalado.
+
+No Windows, normalmente, o caminho é este: 
+C:\Arquivos de programas\BrOffice.org 2.0\share\dict\ooo, e no  Linux
+/opt/BrOffice.org/share/dict/ooo/.
+
+No mesmo diretório, localize o arquivo dictionary.lst. Abra-o com um
+editor de textos e acrescente a seguinte linha ao final(se não
+existir):
+
+DICT pt BR pt_BR
+
+É necessário reiniciar o BrOffice, inclusive o início rápido da versão
+para Windows que fica na barra de tarefas, para que o corretor
+funcione.
+
+===================
+DÚVIDAS FREQUENTES
+===================
+
+Os arquivos foram copiados mas o Verificador não está funcionando.
+O Verificador Ortográfico não deve estar configurado corretamente,
+isto pode estar ocorrendo por um dos seguintes motivos:
+
+1- O dicionário provavelmente não está instalado.
+
+Para se certificar de que está utilizando o idioma correto confira como
+estão as informações em: Ferramentas >> Opções >>   Configurações de
+Idioma >> Idiomas. O item Ocidental deve apresentar o dicionário
+selecionado (deve aparecer um logo "Abc" do lado do idioma).
+
+Se não estiver Português (Brasil) mude para esse idioma. Após
+configurado clique em 'OK'.
+Feche o BrOffice, inclusive o Iniciador Rápido,  e em seguida reabra-o;
+
+
+2 - O verificador não está configurado para verificar texto ao digitar.
+Neste caso confira como estão as informações em: 
+
+(Até a Versão 3.0.X)
+Ferramentas >> Opções>> Configurações de Idiomas >> Recursos de Verificação
+Ortográfica e, no campo opções deste formulário marque a opção 'Verificar 
+texto ao digitar';
+
+(Versão 3.1 em diante)
+Ferramentas >> Opções >> Configurações de Idiomas >> Recursos para redação e,
+no campo opções deste formulário marque a opção 'Verificar ortografia ao digitar
+
+
+Novas atualizações estarão disponíveis no site do BrOffice.Org, na
+página do Verificador Ortográfico.
+
+http://www.openoffice.org.br/?q=verortografico
+
+
+============
+INTRODUCTION
+============
+
+The BrOffice.org Orthography Checker is a colaborative project developed
+by the Brazilian community.
+The complete list of participants in this project is at
+http://www.broffice.org.br/creditos
+
+***********************************************************************
+* This is a dictionary for orthography correction for the Portuguese  *
+* language for Myspell.                                               *
+* This is a free program and it can be redistributed and/or           *
+* modified under the terms of the GNU Lesser General Public License   *
+* (LGPL) version 2.1.                                                 *
+*                                                                     *
+***********************************************************************
+
+=================
+ABOUT THIS UPDATE
+=================
+
+==============================================================
+HOW TO INSTALL THE BRAZILIAN ORTOGRAPH CHECKER IN BROFFICE.ORG
+==============================================================
+
+Copy the files pt_BR.dic and pt_BR.aff to the directory <BrOffice.org>
+/share/dict/ooo, where <BrOffice.org> is the directory where the software
+has been installed.
+
+In Windows, usually, the path is
+C:\Arquivos de programas\BrOffice.org 2.0\share\dict\ooo, and in GNU/Linux
+/opt/BrOffice.org/share/dict/ooo/.
+
+In the same directory, locate the file dictionary.lst. Open it with a
+text editor e add the following line to the end of the file (if it is
+not already there):
+
+DICT pt BR pt_BR
+
+It is necessary to restart BrOffice, including the fast start for the Windows version
+that resides on the task bar, in order to have the orthography checker to work.
+
+
+==========================
+FREQUENTLY ASKED QUESTIONS
+==========================
+
+The files have been copied but the checker is not working. The orthography checker may not be
+configured correctly, this may be due to one of the following reasons:
+
+1- The dictionary is probably not installed.
+
+To make sure that you are using the right language, check the information at
+Ferramentas >> Opções >>  Configurações de Idioma >> Idiomas.
+The item "Ocidental" must present the selected dictionary (a logo "Abc" should
+appear beside the language).
+If the language selected is not "Português (Brasil)" change to this language.
+After the configuration is correct, click on 'OK'.
+Close BrOffice and the fast start, and open it afterwards;
+
+2 - The checker is not configured to verify the orthography on typing. For this
+
+problem, check the information at
+"Ferramentas >> Opções >> Configurações de Idiomas >> Recursos de Verificação Ortográfica"
+and, in the field "Opções" of this form, check the option ''Verificar texto ao digitar';
+
+New updates will be available at the BrOffice.Org website, on the page of the
+Orthography Checker.
+
+http://www.broffice.org/verortografico
+
+===============================================================================
+README_hyph_pt_BR.txt
+===============================================================================
+
+Autor/Author: Raimundo Moura <raimundo.smoura@gmail.com>
+
+pt-BR: Este Divisor de SÃ­labas estÃ¡ em desenvolvimento por Raimundo Moura. Ele estÃ¡
+licenciado sob os termos da LicenÃ§a PÃºblica Geral Menor versÃ£o 3 (LGPLv3), como
+publicado pela Free Software Foundation e pela Mozilla Public License como publicada
+pela Mozilla Foundation. Os crÃ©ditos estÃ£o disponÃ­veis em
+http://pt-br.libreoffice.org/projetos/projeto-vero-verificador-ortografico/
+e vocÃª pode encontrar novas versÃµes em
+http://extensions.libreoffice.org
+
+Copyright (C) 2008 - 2013 por/by Raimundo Santos Moura <raimundo.smoura@gmail.com>
+
+========================================================================================
+APRESENTAÃÃO
+========================================================================================
+
+O Projeto DivSilab do LibreOffice Ã© um projeto
+colaborativo desenvolvido pela comunidade Brasileira.
+A relaÃ§Ã£o completa dos colaboradores deste projeto estÃ¡ em:
+http://pt-br.libreoffice.org/projetos/projeto-vero-verificador-ortografico/
+
+O DivSilab Ã© uma ferramenta para realizar a translineaÃ§Ã£o de textos.
+Ele divide a palavra silabicamente, ficando parte no final da linha e o restante no inÃ­cio
+da linha inferior.
+======================
+SOBRE ESTA ATUALIZAÃÃO
+======================
+VersÃ£o 1.0.8 DivSilab
+Retirada de duplicadas:
+1n2Ã¢
+1s2Ã¢
+1t2Ã¢
+1x2Ã¢
+1z2Ã¢
+InclusÃ£o de:
+1s2Ãµ      (pro.vi.sÃµes)
+ColaboraÃ§Ã£o Adriano Konzen.
+
+InclusÃ£o/alteraÃ§Ã£o de:
+2e4as.
+2e4os.      (alterado de 2eos.)
+1n2Ãº        (alterado de 1n3Ãº)
+1b2Ã¢        re.tum.bÃ¢n.cia
+1c2Ã¢        al.cÃ¢n.ta.ra
+1d2Ã¢        a.bun.dÃ¢n.cia
+1f2Ã¢        al.fÃ¢n.de.ga
+1g2Ã¢        a.mal.gÃ¢.mi.co
+1j2Ã´        em.jÃ´.o
+1m2Ã¢        ger.mÃ¢.ni.co
+1p2Ã¢        cam.pÃ¢.nu.la
+1p2Ã¨        am.pÃ¨.re
+1r2Ã¢        ce.rÃ¢.mi.ca
+1v2Ã¢        gal.vÃ¢.ni.co
+1x2Ãº        lu.xÃº.ria
+ColaboraÃ§Ã£o Adriano Konzen.
+
+InclusÃ£o de: 
+e1Ã¢         pre.Ã¢m.bu.lo - o.ce.Ã¢.ni.co
+h2Ã¢         bri.lhÃ¢.ncia
+i1Ã¢         di.Ã¢.me.tro
+1j2Ã¢        ca.jÃ¢.nea
+a3Ã´         fa.ra.Ã´.ni.co
+o3Ã´         al.co.Ã´.me.tro
+u3Ã´         va.cu.Ã´.me.tro
+
+Para corrigir separaÃ§Ã£o de psi inclusÃ£o de: 
+a3p2s2i1c
+o2p3s2i1c
+a3p2s2i1q
+o2p3s2i1q
+Ã¡2p3s2i
+Ã©2p3s2i
+Ã­2p3s2i
+Ã³2p3s2i
+2p1s2i
+.p2s2i
+
+
+Ã¢1n2a
+Ã¢2n1c
+Ã¢2n1d
+Ã¢1n2e
+Ã¢2n1f
+Ã¢2n1g
+Ã¢1n2h
+Ã¢1n2i
+Ã¢2n1j
+Ã¢2n1n
+Ã¢1n2o
+Ã¢2n1q
+Ã¢2n1r
+Ã¢2n1s2i
+Ã¢2n1s2e
+Ã¢2n4s1c
+Ã¢2n4s1f
+Ã¢2n1t
+Ã¢1n2u
+Ã¢2n1v
+Ã¢2n1z
+
+InclusÃ£o de regras para palavras acentuadas terminadas em io e ia 
+
+2Ã¡1b2i4a
+2Ã¡1c2i4a
+2Ã¡1d2i4a
+2Ã¡1f2i4a
+2Ã¡1g2i4a
+2Ã¡1l2i4a
+2Ã¡1p2i4a
+2Ã¡1r2i4a
+2Ã¡1s2i4a
+2Ã¡1t2i4a
+2Ã¡1v2i4a
+2Ã¡1x2i4a
+2Ã¡1z2i4a
+2Ã¢1m2i4a
+2Ã¢1n2i4a
+2Ã©1b2i4a
+2Ã©1c2i4a
+2Ã©1d2i4a
+2Ã©1f2i4a
+2Ã©1g2i4a
+2Ã©1l2i4a
+2Ã©1n2i4a
+2Ã©1p2i4a
+2Ã©1r2i4a
+2Ã©1s2i4a
+2Ã©1t2i4a
+2Ã©1v2i4a
+2Ã©1x2i4a
+2Ã©1y2i4a
+2Ã©1z2i4a
+2Ãª1m2i4a
+2Ãª1n2i4a
+2Ã­1b2i4a
+2Ã­1c2i4a
+2Ã­1d2i4a
+2Ã­1f2i4a
+2Ã­1g2i4a
+2Ã­1j2i4a
+2Ã­1l2i4a
+2Ã­1m2i4a
+2Ã­1n2i4a
+2Ã­1p2i4a
+2Ã­1r2i4a
+2Ã­1s2i4a
+2Ã­1t2i4a
+2Ã­1v2i4a
+2Ã­1x2i4a
+2Ã­1z2i4a
+2Ã³1b2i4a
+2Ã³1c2i4a
+2Ã³1d2i4a
+2Ã³1f2i4a
+2Ã³1g2i4a
+2Ã³1j2i4a
+2Ã³1l2i4a
+2Ã³1p2i4a
+2Ã³1r2i4a
+2Ã³1s2i4a
+2Ã³1t2i4a
+2Ã³1v2i4a
+2Ã³1x2i4a
+2Ã³1z2i4a
+2Ã´1d2i4a
+2Ã´1m2i4a
+2Ã´1n2i4a
+2Ãº1b2i4a
+2Ãº1c2i4a
+2Ãº1d2i4a
+2Ãº1f2i4a
+2Ãº1g2i4a
+2Ãº1l2i4a
+2Ãº1m2i4a
+2Ãº1n2i4a
+2Ãº1p2i4a
+2Ãº1r2i4a
+2Ãº1s2i4a
+2Ãº1v2i4a
+2Ãº1x2i4a
+2Ãº1z2i4a
+2Ã¡1b2i4o
+2Ã¡1c2i4o
+2Ã¡1d2i4o
+2Ã¡1f2i4o
+2Ã¡1g2i4o
+2Ã¡1l2i4o
+2Ã¡1n2i4o
+2Ã¡1p2i4o
+2Ã¡1r2i4o
+2Ã¡1s2i4o
+2Ã¡1t2i4o
+2Ã¡1v2i4o
+2Ã¡1x2i4o
+2Ã¡1z2i4o
+2Ã¢1m2i4o
+2Ã¢1n2i4o
+2Ã©1b2i4o
+2Ã©1c2i4o
+2Ã©1d2i4o
+2Ã©1f2i4o
+2Ã©1g2i4o
+2Ã©1l2i4o
+2Ã©1n2i4o
+2Ã©1p2i4o
+2Ã©1r2i4o
+2Ã©1s2i4o
+2Ã©1t2i4o
+2Ã©1v2i4o
+2Ã©1x2i4o
+2Ã©1z2i4o
+2Ãª1m2i4o
+2Ãª1n2i4o
+2Ãª1s2i4o
+2Ã­1b2i4o
+2Ã­1c2i4o
+2Ã­1d2i4o
+2Ã­1f2i4o
+2Ã­1g2i4o
+2Ã­1l2i4o
+2Ã­1m2i4o
+2Ã­1n2i4o
+2Ã­1p2i4o
+2Ã­1r2i4o
+2Ã­1s2i4o
+2Ã­1t2i4o
+2Ã­1v2i4o
+2Ã­1z2i4o
+2Ã³1b2i4o
+2Ã³1c2i4o
+2Ã³1d2i4o
+2Ã³1f2i4o
+2Ã³1g2i4o
+2Ã³1l2i4o
+2Ã³1m2i4o
+2Ã³1p2i4o
+2Ã³1r2i4o
+2Ã³1s2i4o
+2Ã³1t2i4o
+2Ã³1v2i4o
+2Ã³1x2i4o
+2Ã³1z2i4o
+2Ã´1d2i4o
+2Ã´1m2i4o
+2Ã´1n2i4o
+2Ãº1b2i4o
+2Ãº1c2i4o
+2Ãº1d2i4o
+2Ãº1f2i4o
+2Ãº1g2i4o
+2Ãº1j2i4o
+2Ãº1l2i4o
+2Ãº1m2i4o
+2Ãº1n2i4o
+2Ãº1p2i4o
+2Ãº1r2i4o
+2Ãº1s2i4o
+2Ãº1t2i4o
+2Ãº1v2i4o
+2Ãº1z2i4o
+2Ã¡4i1b2i4a
+2Ã¢4m1b2i4a
+2Ã©4b1b2i4a
+2Ã©4r1b2i4a
+2Ã©4s1b2i4a
+2Ã­4l1b2i4a
+2Ã­4m1b2i4a
+2Ã­4r1b2i4a
+2Ã³4b1b2i4a
+2Ã´4m1b2i4a
+2Ã³4s1b2i4a
+2Ãº4m1b2i4a
+2Ã¡4l1c2i4a
+2Ã¢4n1c2i4a
+2Ã¡4r1c2i4a
+2Ã¡4u1c2i4a
+2Ãª4n1c2i4a
+2Ã©4p1c2i4a
+2Ã©4r1c2i4a
+2Ã©4s1c2i4a
+2Ãª4u1c2i4a
+2Ã­4l1c2i4a
+2Ã­4n1c2i4a
+2Ã­4r1c2i4a
+2Ã­4s1c2i4a
+2Ã³4l1c2i4a
+2Ã´4n1c2i4a
+2Ã³4r1c2i4a
+2Ã³4s1c2i4a
+2Ãº4n1c2i4a
+2Ãº4p1c2i4a
+2Ãº4r1c2i4a
+2Ã¡4b1d2i4a
+2Ã¡4g1d2i4a
+2Ã¡4l1d2i4a
+2Ã¢4n1d2i4a
+2Ã¡4r1d2i4a
+2Ã¡4u1d2i4a
+2Ãª4i1d2i4a
+2Ã©4l1d2i4a
+2Ãª4n1d2i4a
+2Ã©4r1d2i4a
+2Ã­4l1d2i4a
+2Ã­4n1d2i4a
+2Ã³4l1d2i4a
+2Ã´4l1d2i4a
+2Ã´4n1d2i4a
+2Ã³4r1d2i4a
+2Ãº4l1d2i4a
+2Ãº4n1d2i4a
+2Ãº4r1d2i4a
+2Ã¢4n1f2i4a
+2Ã¡4r1f2i4a
+2Ã©4l1f2i4a
+2Ã³4l1f2i4a
+2Ã´4n1f2i4a
+2Ã³4r1f2i4a
+2Ãº4l1f2i4a
+2Ã¡4i1g2i4a
+2Ã¡4l1g2i4a
+2Ã¢4n1g2i4a
+2Ã¡4r1g2i4a
+2Ã©4r1g2i4a
+2Ã­4n1g2i4a
+2Ã´4n1g2i4a
+2Ã³4r1g2i4a
+2Ãº4n1g2i4a
+2Ãº4r1g2i4a
+2Ã¡1c4h2i4a
+2Ã¡1l4h2i4a
+2Ã¢1n4h2i4a
+2Ã©1c4h2i4a
+2Ã©4t1h2i4a
+2Ã­4g1h2i4a
+2Ã´1n4h2i4a
+2Ãº1c4h2i4a
+2Ã¡1c4l2i4a
+2Ã¡1g4l2i4a
+2Ã¡4l1l2i4a
+2Ã¡4r1l2i4a
+2Ã¡4u1l2i4a
+2Ã©4l1l2i4a
+2Ã©4s1l2i4a
+2Ã©1t4l2i4a
+2Ãª4u1l2i4a
+2Ã­1b4l2i4a
+2Ã­1c4l2i4a
+2Ã³1g4l2i4a
+2Ã³1p4l2i4a
+2Ã´4u1l2i4a
+2Ã¡4l1m2i4a
+2Ã¡4r1m2i4a
+2Ã¡4s1m2i4a
+2Ã¡4u1m2i4a
+2Ãª4i1m2i4a
+2Ã©4l1m2i4a
+2Ã©4r1m2i4a
+2Ã©4s1m2i4a
+2Ãª4s1m2i4a
+2Ã­4m1m2i4a
+2Ã­4s1m2i4a
+2Ã´4l1m2i4a
+2Ã³4r1m2i4a
+2Ã³4s1m2i4a
+2Ã¡4f1n2i4a
+2Ã¡4g1n2i4a
+2Ã¢4g1n2i4a
+2Ã¢4i1n2i4a
+2Ã¢4m1n2i4a
+2Ã¢4n1n2i4a
+2Ã¡4u1n2i4a
+2Ã©4g1n2i4a
+2Ãª4i1n2i4a
+2Ã©4r1n2i4a
+2Ã­4g1n2i4a
+2Ã­4m1n2i4a
+2Ã­4r1n2i4a
+2Ã³4c1n2i4a
+2Ã³4d1n2i4a
+2Ã³4l1n2i4a
+2Ã³4r1n2i4a
+2Ã³4t1n2i4a
+2Ãº4r1n2i4a
+2Ã¡4l1p2i4a
+2Ã¢4m1p2i4a
+2Ã¡4p1p2i4a
+2Ã¡4r1p2i4a
+2Ã©4r1p2i4a
+2Ã­4m1p2i4a
+2Ã­4p1p2i4a
+2Ã³4r1p2i4a
+2Ã³4s1p2i4a
+2Ãº4l1p2i4a
+2Ãº4p1p2i4a
+2Ã¡1b4r2i4a
+2Ã¡1c4r2i4a
+2Ã¡1d4r2i4a
+2Ã¡1f4r2i4a
+2Ã¡1g4r2i4a
+2Ã¢4n1r2i4a
+2Ã¡4r1r2i4a
+2Ã¡1t4r2i4a
+2Ã¡4u1r2i4a
+2Ã©1b4r2i4a
+2Ã©1d4r2i4a
+2Ã©1f4r2i4a
+2Ã©4r1r2i4a
+2Ã©1t4r2i4a
+2Ãª4u1r2i4a
+2Ã­1c4r2i4a
+2Ã­1d4r2i4a
+2Ã­1p4r2i4a
+2Ã­1t4r2i4a
+2Ã³1d4r2i4a
+2Ã³1f4r2i4a
+2Ã´4i1r2i4a
+2Ã³1p4r2i4a
+2Ã³4r1r2i4a
+2Ã³1t4r2i4a
+2Ã´4u1r2i4a
+2Ãº1g4r2i4a
+2Ãº4r1r2i4a
+2Ãº1t4r2i4a
+2Ã¡4i1s2i4a
+2Ã¢4n1s2i4a
+2Ã¡4p1s2i4a
+2Ã¡4r1s2i4a
+2Ã¡4s1s2i4a
+2Ã¡4t1s2i4a
+2Ã¡4u1s2i4a
+2Ã©4l1s2i4a
+2Ãª4n1s2i4a
+2Ã©4p1s2i4a
+2Ã©4r1s2i4a
+2Ã©4s1s2i4a
+2Ã©4t1s2i4a
+2Ãª4y1s2i4a
+2Ã­4n1s2i4a
+2Ã­4p1s2i4a
+2Ã­4s1s2i4a
+2Ã­4t1s2i4a
+2Ã´4n1s2i4a
+2Ã³4p1s2i4a
+2Ã³4r1s2i4a
+2Ã³4s1s2i4a
+2Ã´4u1s2i4a
+2Ãº4c1s2i4a
+2Ãº4n1s2i4a
+2Ãº4s1s2i4a
+2Ã¡4c1t2i4a
+2Ã¡4l1t2i4a
+2Ã¢4n1t2i4a
+2Ã¡4p1t2i4a
+2Ã¡4r1t2i4a
+2Ã¡4s1t2i4a
+2Ã¡4t1t2i4a
+2Ã©4c1t2i4a
+2Ã©4d1t2i4a
+2Ãª4n1t2i4a
+2Ã©4r1t2i4a
+2Ã©4s1t2i4a
+2Ã©4t1t2i4a
+2Ã­4c1t2i4a
+2Ã­4d1t2i4a
+2Ã­4f1t2i4a
+2Ã­4n1t2i4a
+2Ã­4p1t2i4a
+2Ã­4s1t2i4a
+2Ã´4n1t2i4a
+2Ã³4r1t2i4a
+2Ã³4s1t2i4a
+2Ã³4t1t2i4a
+2Ãº4r1t2i4a
+2Ãº4s1t2i4a
+2Ã¡1g4u2i4a
+2Ã¡1q4u2i4a
+2Ã©1g4u2i4a
+2Ã©1q4u2i4a
+2Ã­1q4u2i4a
+2Ã³1q4u2i4a
+2Ãº1q4u2i4a
+2Ã¡4l1v2i4a
+2Ã¡4u1v2i4a
+2Ã©4r1v2i4a
+2Ã­4l1v2i4a
+2Ã³4r1v2i4a
+2Ã¡4r1x2i4a
+2Ã¡4u1x2i4a
+2Ã¢4u1x2i4a
+2Ãª4i1x2i4a
+2Ã¡4r1z2i4a
+2Ãª4n1z2i4a
+2Ã©4t1z2i4a
+2Ã­4t1z2i4a
+2Ã³4l1z2i4a
+2Ã´4l1z2i4a
+2Ã´4n1z2i4a
+2Ã³4t1z2i4a
+2Ã³4z1z2i4a
+2Ã¢4m1b2i4o
+2Ã¡4r1b2i4o
+2Ã©4r1b2i4o
+2Ã©4s1b2i4o
+2Ã­4m1b2i4o
+2Ã´4m1b2i4o
+2Ã³4r1b2i4o
+2Ãº4m1b2i4o
+2Ãº4r1b2i4o
+2Ã¡4l1c2i4o
+2Ã¢4n1c2i4o
+2Ã¡4r1c2i4o
+2Ã¡4s1c2i4o
+2Ã¡4u1c2i4o
+2Ã©4l1c2i4o
+2Ãª4n1c2i4o
+2Ã©4r1c2i4o
+2Ã©4s1c2i4o
+2Ãª4u1c2i4o
+2Ã­4n1c2i4o
+2Ã­4p1c2i4o
+2Ã­4r1c2i4o
+2Ã­4s1c2i4o
+2Ã´4n1c2i4o
+2Ã³4r1c2i4o
+2Ã³4s1c2i4o
+2Ãº4l1c2i4o
+2Ãº4n1c2i4o
+2Ãº4r1c2i4o
+2Ãº4s1c2i4o
+2Ã¡4b1d2i4o
+2Ã¢4n1d2i4o
+2Ã¡4r1d2i4o
+2Ã¡4u1d2i4o
+2Ãª4i1d2i4o
+2Ãª4n1d2i4o
+2Ã­4l1d2i4o
+2Ã­4n1d2i4o
+2Ã´4n1d2i4o
+2Ã³4r1d2i4o
+2Ãº4n1d2i4o
+2Ãº4r1d2i4o
+2Ã¡4r1f2i4o
+2Ã©4l1f2i4o
+2Ãª4n1f2i4o
+2Ã­4l1f2i4o
+2Ãº4n1f2i4o
+2Ã¡4l1g2i4o
+2Ã¢4n1g2i4o
+2Ã¡4r1g2i4o
+2Ã¡4s1g2i4o
+2Ã©4l1g2i4o
+2Ã©4r1g2i4o
+2Ã­4n1g2i4o
+2Ã´4n1g2i4o
+2Ã³4r1g2i4o
+2Ãº4r1g2i4o
+2Ã¡1c4h2i4o
+2Ã³1c4h2i4o
+2Ã¡1b4l2i4o
+2Ã¡1c4l2i4o
+2Ã¡4u1l2i4o
+2Ãª4i1l2i4o
+2Ã­1b4l2i4o
+2Ã­1c4l2i4o
+2Ã­1g4l2i4o
+2Ã³1c4l2i4o
+2Ã³1g4l2i4o
+2Ã³1p4l2i4o
+2Ãº1c4l2i4o
+2Ã¡4d1m2i4o
+2Ã¡4g1m2i4o
+2Ã¡4i1m2i4o
+2Ã¡4j1m2i4o
+2Ã¡4l1m2i4o
+2Ã¡4s1m2i4o
+2Ã¡4t1m2i4o
+2Ã©4l1m2i4o
+2Ã©4r1m2i4o
+2Ã©4s1m2i4o
+2Ã­4s1m2i4o
+2Ã³4c1m2i4o
+2Ã³4l1m2i4o
+2Ã³4r1m2i4o
+2Ã³4s1m2i4o
+2Ã¡4c1n2i4o
+2Ã¡4f1n2i4o
+2Ã¡4g1n2i4o
+2Ã¢4m1n2i4o
+2Ã¡4r1n2i4o
+2Ã¡4u1n2i4o
+2Ã©4g1n2i4o
+2Ãª4i1n2i4o
+2Ãª4m1n2i4o
+2Ã©4r1n2i4o
+2Ã­4c1n2i4o
+2Ã­4f1n2i4o
+2Ã­4g1n2i4o
+2Ã­4m1n2i4o
+2Ã­4r1n2i4o
+2Ã­4s1n2i4o
+2Ã­4t1n2i4o
+2Ã³4d1n2i4o
+2Ã³4g1n2i4o
+2Ã³4r1n2i4o
+2Ã³4s1n2i4o
+2Ãº4b1n2i4o
+2Ãº4r1n2i4o
+2Ã¡4l1p2i4o
+2Ã¢4m1p2i4o
+2Ã¡4r1p2i4o
+2Ã¡4s1p2i4o
+2Ã¡4u1p2i4o
+2Ã©4s1p2i4o
+2Ã­4m1p2i4o
+2Ã³4l1p2i4o
+2Ã³4r1p2i4o
+2Ã³4s1p2i4o
+2Ãº4l1p2i4o
+2Ã¡4b1r2i4o
+2Ã¡1c4r2i4o
+2Ã¡1d4r2i4o
+2Ã¡1f4r2i4o
+2Ã¡1g4r2i4o
+2Ã¡4r1r2i4o
+2Ã¡4s1r2i4o
+2Ã¡1t4r2i4o
+2Ã¡4u1r2i4o
+2Ã©1b4r2i4o
+2Ã©1d4r2i4o
+2Ã©1g4r2i4o
+2Ãª1n4r2i4o
+2Ã©1t4r2i4o
+2Ãª4u1r2i4o
+2Ã­1b4r2i4o
+2Ã­1d4r2i4o
+2Ã­1p4r2i4o
+2Ã­1t4r2i4o
+2Ã³1b4r2i4o
+2Ã³1c4r2i4o
+2Ã³1f4r2i4o
+2Ã³4h1r2i4o
+2Ã³1p4r2i4o
+2Ã³4r1r2i4o
+2Ã³1t4r2i4o
+2Ãº1b4r2i4o
+2Ãº4h1r2i4o
+2Ãº4r1r2i4o
+2Ãº1t4r2i4o
+2Ã¡4i1s2i4o
+2Ã¡4r1s2i4o
+2Ã¡4s1s2i4o
+2Ã¡4u1s2i4o
+2Ãª4n1s2i4o
+2Ã©4p1s2i4o
+2Ã©4r1s2i4o
+2Ã©4s1s2i4o
+2Ã­4s1s2i4o
+2Ã´4n1s2i4o
+2Ã³4p1s2i4o
+2Ã³4s1s2i4o
+2Ãº4r1s2i4o
+2Ãº4s1s2i4o
+2Ã¡4c1t2i4o
+2Ã¢4n1t2i4o
+2Ã¡4r1t2i4o
+2Ã¡4s1t2i4o
+2Ã©4l1t2i4o
+2Ãª4n1t2i4o
+2Ã©4r1t2i4o
+2Ã©4s1t2i4o
+2Ã­4c1t2i4o
+2Ã­4n1t2i4o
+2Ã­4p1t2i4o
+2Ã­4r1t2i4o
+2Ã­4s1t2i4o
+2Ã³4c1t2i4o
+2Ã³4l1t2i4o
+2Ã´4n1t2i4o
+2Ã³4p1t2i4o
+2Ã³4s1t2i4o
+2Ãº4r1t2i4o
+2Ãº4s1t2i4o
+2Ã¡1q4u2i4o
+2Ã©1q4u2i4o
+2Ã­1q4u2i4o
+2Ã³1q4u2i4o
+2Ã¡4l1v2i4o
+2Ã¢4n1v2i4o
+2Ã©4l1v2i4o
+2Ã©4r1v2i4o
+2Ã­4l1v2i4o
+2Ã­4n1v2i4o
+2Ã³4b1v2i4o
+2Ãº4l1v2i4o
+2Ã©4l1z2i4o
+
+
+
+VersÃ£o 1.0.7 DivSilab
+
+CorreÃ§Ã£o da quebra de sÃ­labas das palavras com 'guin', como: 'seguintes' ERRADO(se-gu-in-tes)
+ColaboraÃ§Ã£o FlÃ¡vio Cardoso;
+inclusÃ£o das regras:
+1g2u4i3n2a
+1g2u4i3n2Ã¡
+1g2u4i2n1c
+1g2u4i2n1d
+1g2u4i3n2e
+1g2u4i3n2Ã©
+1g2u4i2n1g
+1g2u4i3n2h
+1g2u4i3n2i
+1g2u4i3n2Ã­
+1g2u4i2n1j
+1g2u4i3n2o
+1g2u4i3n2Ã³
+1g2u4i2n2s
+1g2u4i2n1t
+1g2u4i3n2u
+1g2u4i2n1x
+
+
+VersÃ£o 1.0.6 DivSilab
+
+CorreÃ§Ã£o da quebra de sÃ­labas das palavras com 'br', como: 'vibraÃ§Ã£o' ERRADO(vib-ra-Ã§Ã£o)
+ColaboraÃ§Ã£o Leandro Dutra;
+CorreÃ§Ã£o da quebra de sÃ­labas das palavras com 'psic', como: 'neuropsicologia' ERRADO(neu-rop-si-co-lo-gia)
+ColaboraÃ§Ã£o Raimundo;
+CorreÃ§Ã£o da quebra de sÃ­labas das palavras com 'uin', como: 'contribuinte' ERRADO(con-tri-buin-te)
+ColaboraÃ§Ã£o JoÃ£o Paulo Vinha Bittar;
+
+
+
+VersÃ£o 1.0.5 DivSilab
+
+CorreÃ§Ã£o da quebra de sÃ­labas das palavras com 'gn', como: 'incÃ³gnito' ERRADO(in-cÃ³-g-ni-to)
+
+ExclusÃ£o dos cÃ³digos
+Ã³2s3t2
+2g1g2
+2g3s2
+2g1t2
+2m1m2
+1n2Ã£
+2n3c42
+2n3d2
+2n3t2
+2p1p2
+2t3g2
+2d1g2
+2d1d2
+2d1t2
+Ã³1g2a
+Ã³1g2e
+Ã³1g2i
+Ã³1g2l2
+Ã³2g3n2
+Ã³1g2o
+Ã³1g2r2
+Ã³2g1u
+o1g2a
+o1g2Ã¡
+o1g2Ã¢
+o1g2Ã£
+o2g1b2
+o2g1c2
+o2g1d2
+o1g2e
+o1g2Ã©
+o1g2Ãª
+o2g1g2
+o1g2i
+o1g2Ã­
+o1g4l2
+o2g1m2
+o2g1n2
+o1g2o
+o1g2Ã³
+o1g2Ã´
+o1g4r2
+o2g1s2
+o2g1t2
+o1g2u
+o1g2Ãº
+i1g2a
+i1g2Ã¡
+i1g2Ã¢
+i1g2Ã£
+i2g1b2
+i2g1d2
+i1g2e
+i1g2Ã©
+i1g2Ãª
+i2g1g2
+i2g1h2
+i1g2i
+i1g2Ã­
+i1g4l2
+i2g1m2
+i2g1n2
+i1g2o
+i1g2Ã³
+i1g2Ã´
+i1g2Ãµ
+i2g1p2
+i1g4r2
+i2g1s2
+i2g1t2
+i1g2u
+i1g2Ãº
+i2g1v2
+i1g2y
+Ã­1g2a
+Ã­2g1d2
+Ã­1g2e
+Ã­2g1h2
+Ã­1g2i
+Ã­1g4l2
+Ã­2g1m2
+Ã­2g1n2
+Ã­1g2o
+Ã­1g4r2
+Ã­1g2u
+u1g2a
+u1g2Ã¡
+u1g2Ã¢
+u1g2Ã£
+u2g1b2
+u2g1d2
+u1g2e
+u1g2Ã©
+u1g2Ãª
+u2g1g2
+u2g1h2
+u1g2i
+u1g2Ã­
+u1g4l2
+u2g1m2
+u2g1n2
+u1g2o
+u1g2Ã³
+u1g2Ã´
+u1g4r2
+u2g1t2
+u1g2u
+u1g2Ãº
+Ãº1g2a
+Ãº2g1b2
+Ãº1g2e
+Ãº1g2i
+Ãº1g2o
+Ãº1g4r2
+Ãº1g2u
+
+=========================================================
+VersÃ£o 1.0.4 DivSilab
+
+SÃ­labas 'a1rÃ´' estÃ£o duplicadas com 'a1rÃ´'. Ignorada!
+SÃ­labas '2a4y3i1' estÃ£o duplicadas com '2a4y3i'. Usada '2a4y3i1'!
+SÃ­labas '2a4y3l' estÃ£o duplicadas com '2a4yl3'. Concatenada '2a4y3l3'!
+SÃ­labas '1co3Ãª' estÃ£o duplicadas com '1co3Ãª'. Ignorada!
+SÃ­labas '1co3Ãª' estÃ£o duplicadas com '1co3Ãª'. Ignorada!
+SÃ­labas '1co3Ãª' estÃ£o duplicadas com '1co3Ãª'. Ignorada!
+SÃ­labas 'e3r2o1m2a' estÃ£o duplicadas com 'e3r2o1m2a'. Ignorada!
+SÃ­labas 'e3r2o1m2e' estÃ£o duplicadas com 'e3r2o1m2e'. Ignorada!
+SÃ­labas 'e3r2o1m2i' estÃ£o duplicadas com 'e3r2o1m2i'. Ignorada!
+SÃ­labas 'e3r4o2m1n2' estÃ£o duplicadas com 'e3r2o2m1n2'. Usada 'e3r4o2m1n2'!
+SÃ­labas 'e3r2o1m2o' estÃ£o duplicadas com 'e3r2o1m2o'. Ignorada!
+SÃ­labas 'e3r2o1m2u' estÃ£o duplicadas com 'e3r2o1m2u'. Ignorada!
+SÃ­labas 'e3r2o1m2Ã¡' estÃ£o duplicadas com 'e3r2o1m2Ã¡'. Ignorada!
+SÃ­labas 'e3r2o1m2Ã¢' estÃ£o duplicadas com 'e3r2o1m2Ã¢'. Ignorada!
+SÃ­labas 'e3r2o1m2Ã©' estÃ£o duplicadas com 'e3r2o1m2Ã©'. Ignorada!
+SÃ­labas 'e3r2o1m2Ã­' estÃ£o duplicadas com 'e3r2o1m2Ã­'. Ignorada!
+SÃ­labas 'e3r2o1m2Ã³' estÃ£o duplicadas com 'e3r2o1m2Ã³'. Ignorada!
+SÃ­labas 'e3r2o1m2Ã´' estÃ£o duplicadas com 'e3r2o1m2Ã´'. Ignorada!
+SÃ­labas '1lo3w' estÃ£o duplicadas com 'l2ow1'. Concatenada '1l2o3w1'!
+SÃ­labas 'o3g2' estÃ£o duplicadas com 'o3g2'. Ignorada!
+SÃ­labas 'r2a2i4s.' estÃ£o duplicadas com 'r2a2i4s.'. Ignorada!
+SÃ­labas 'r2a3i2s.' estÃ£o duplicadas com 'r2a2i4s.'. Concatenada 'r2a3i4s.'!
+SÃ­labas '1rais.' estÃ£o duplicadas com 'r2a2i4s.'. Concatenada '1r2a3i4s.'!
+SÃ­labas 'r2a3y' estÃ£o duplicadas com 'r2a2y3'. Concatenada 'r2a3y3'!
+SÃ­labas '1ra3Ã³' estÃ£o duplicadas com 'r2a3Ã³'. Concatenada '1r2a3Ã³'!
+SÃ­labas '1s2e' estÃ£o duplicadas com '1s2e'. Ignorada!
+ColaboraÃ§Ã£o Adriano Konzen
+
+CorreÃ§Ã£o da quebra de sÃ­labas das palavras 'envolvidos' (en-vo-lvi-dos)
+substituiÃ§Ã£o  de 'o1l2v' por 'o2l1v'
+ColaboraÃ§Ã£o JoÃ£o Paulo Vinha Bittar
+
+InclusÃ£o dos cÃ³digos
+t3g
+1t4h2
+1t2i
+1t2Ã­
+1t2l4
+2t3m4
+1t3n2
+1t2o
+1t2Ã³
+1t2Ã´
+1t2Ãµ4
+1t4r2
+2t3s4
+2t3t4
+1t2u
+1t2Ãº
+2t3z
+u2a
+g4u6Ã¡
+u1Ã¡
+q4u6Ã¡
+u1Ã£
+g4u6Ã£
+q4u6Ã£
+u1b2Ã¡
+u1b2a
+u2b1z2
+u2bl
+u1b2Ã¢
+u2b1n2
+u2b1t2
+u2b1m2
+u2b1j2
+u2b1f2
+u1b2Ãº
+u2b1v2
+u2b1p2
+u2br
+u1b2u
+u1b2i
+u1b2Ã©
+u1b2e
+u2b1d2
+u1b2Ã´
+u1b2Ã£
+u1b2Ã³
+u2b1g2
+u2b1c2
+u2b1s2
+u2b1q4
+u1b2Ã­
+u1b2o
+Ãº3b2
+.s2u4b3s4i6s1
+.s2u4b3s4e6r1
+.s2u4b3s2e1
+.s2u4b3l2i5n4h2
+1s2u4b4s3t2
+.s2u4b5r2
+.s2u4b3n2
+.s2u4b3s2i1
+.s2u4b4s3t2
+.s2u4b4s3c2
+.s2u4b3s2Ã­1
+.s2u4b3m2
+.s2u4b3l2i5m2i3n2
+.s2u4b3l2o5
+.s2u4b3p2
+u1c2Ã¡
+u1c2o
+u1c2Ã­
+u1c4h2
+u1c2Ãº
+u1c2u
+u1c2Ã´
+u1c2e
+u1c2Ãª
+u1c2Ã£
+u2c1n2
+u1c2Ã©
+u2c1Ã§2
+u1c2a
+u2c1z2
+u1c2y
+u2c1m2
+u1c4r2
+u2c1s2
+u1c2Ã³
+u1c2i
+u2c1t2
+u2c1c2
+u1c2Ã¢
+u1c4l2
+Ãº3c2
+u3d2
+Ãº3d2
+u2e
+u1Ã©
+q4u6Ã©
+g4u6Ã©
+u1Ãª
+g4u6Ãª
+q4u6Ãª
+u3f2
+u3g2
+Ãº1g
+u2i
+u1Ã­
+g4u6Ã­
+q4u6Ã­
+u3j2
+u1l2o
+u2l1Ã§2
+u2l1d2
+u1l2Ãµ4
+u1l2Ã´
+u2l1c2
+u1l2a
+u2l1b2
+u2l1p2
+u2l1g2
+u2l1t2
+u1l2e
+u2l1q4
+u1l2u
+u2l1f2
+u2l1m2
+u2l1l2
+u2l1z2
+u1l2Ã³
+u1l2Ã£
+u1l2Ã¢
+u2l1s2
+u1l2Ã¡
+u2l1x2
+u2l1n2
+u1l4h2
+u2l1v2
+u1l2Ã­
+u2l1r2
+u1l2Ãº
+u1l2Ã©
+u1l2Ãª
+u1l2i
+Ãº2l1m2
+Ãº2l1v2
+Ãº1l2u
+Ãº1l2e
+Ãº2l1f2
+Ãº1l4h2
+Ãº2l1p2
+Ãº2l1t2
+Ãº1l2a
+Ãº2l1g2
+Ãº1l2o
+Ãº1l2i
+Ãº2l1d2
+Ãº2l1b2
+Ãº2l1c2
+u2m1m2
+u1m2Ã©
+u2m1t2
+u1m2Ã­
+u2m1z2
+u2m1n2
+u1m2a
+u1m2Ã¢
+u1m2i
+u2m1h2
+u1m2o
+u1m2Ã³
+u1m2Ã£
+u1m2e
+u2m1l2
+u1m2Ã¡
+u2m1b2
+u2m1p2
+u1m2Ã´
+u1m2Ãº
+u1m2Ãª
+u1m2u
+Ãº2m1n2
+Ãº1m2e
+Ãº1m2a
+Ãº2m1p2
+Ãº1m2i
+Ãº1m2u
+Ãº2m1b2
+u2n4s1v2
+u2n1l2
+u2n1x2
+u2n1z2
+u2n4s1p2
+u2n1f2
+u2n1t2
+u2n1v2
+u2n4s1f2
+u2n4s1t2
+u2n4s.
+u2n4s1d2
+u2n1r2
+u2n1g2
+u2n1s2Ã©
+u2n1b2
+u2n1Ã§2
+u2n1d2
+u2n1s2i
+u2n1s2o
+u2n1j2
+u2n1k2
+u2n1n2
+u1n2Ã­
+u1n2Ã³
+u1n2Ãº
+u1n2i
+u1n2Ã©
+u1n2e
+u1n2Ã£
+u1n2Ã¢
+u1n2Ã¡
+u2n1q4
+u1n2a
+u2n4s1c2
+u1n2o
+u1n2Ã´
+u1n4h2
+u2n1s2e
+u1n2u
+u2n1c2
+Ãº1n2i
+Ãº2n1q4
+Ãº1n2e
+Ãº1n4h2
+Ãº1n2o
+Ãº2n1d2
+Ãº2n1z2
+Ãº1n2a
+Ãº2n1v2
+Ãº2n1s2i
+Ãº2n1g2
+Ãº2n3s.
+Ãº2n1c2
+Ãº2n1j2
+Ãº2n1f2
+Ãº1n2u
+u2o
+2u1Ã³3
+u3p2
+Ãº3p2
+u3q4
+u2r1z2
+u2r1j2
+u2r1t2
+u2r3r2
+u1r2Ãº
+u2r1c2
+u2r1s2
+u2r1b2
+u1r2i
+u2r1f2
+u1r2a
+u1r2Ã´
+u2r1d2
+u1r2Ãµ4
+u1r2Ã­
+u1r2e
+u2r1n2
+u1r2Ã³
+u1r2Ã¡
+u1r2Ã¢
+u1r2o
+u2r1h2
+u1r2Ã©
+u1r2Ãª
+u1r2Ã£
+u2r1g2
+u2r1q4
+u2r1m2
+u2r1Ã§2
+u2r1p2
+u2r1k2
+u1r2y
+u2r1v2
+u1r2u
+u2r1l2
+Ãº3r2
+u1s2u
+u2s1z2
+u2s1q4
+u2s1b2
+u1s4h2
+u2s3s2
+u2s1t2
+u2s1j2
+u2s1n2
+u2s1m2
+u2s1v2
+u2s1g2
+u2s1c2
+u1s2i
+u2s1l2
+u1s2o
+u1s2Ã¡
+u1s2Ã³
+u1s2Ãº
+u2s1f2
+u2s1d2
+u1s2a
+u1s2Ã©
+u1s2Ã­
+u1s2Ãª
+u1s2Ã¢
+u1s2Ã£
+u1s2e
+u1s2Ã´
+u2s1p2
+u2s1r2
+Ãº2s1p2
+Ãº2s3s2
+Ãº2s1m2
+Ãº2s1q4
+Ãº1s2a
+Ãº2s1t2
+Ãº2s1n2
+Ãº1s2o
+Ãº1s2e
+Ãº1s2i
+Ãº2s1c2
+u3t2
+Ãº3t2
+u3u
+u3v2
+Ãº3v2
+u3x2
+u1z2a
+u1z2Ã£
+u1z2o
+u1z2Ãº
+u1z2Ã¢
+u1z2e
+u1z2Ã­
+u2z1m2
+u2z1b2
+u1z2Ã¡
+u2z1z2
+u1z2Ã´
+u1z2Ãª
+u2z1l2
+u1z2i
+u1z2u
+u1z2Ã³
+u1z2Ã©
+1v2a
+1v2Ã¡
+1v2Ã£
+1v2e
+1v2Ã©
+1v2Ãª
+1v2i
+1v2Ã­
+1v2o
+1v2Ã³
+1v2Ã´
+1vÃµe3z
+1vÃµes
+1v4r2
+1v2u
+w2a
+1x2a
+1x2Ã¡
+1x2Ã£
+2x3c4
+1x2e
+1x2Ã©
+1x2Ãª
+1x2i
+1x2Ã­
+1x2o
+1x2Ã³
+1x2Ã´
+2x3p4
+x1s
+2x3t4
+1x2u
+y2a
+1ye
+.yer1
+1z2a
+1z2Ã¡
+1z2Ã£
+1z2e
+1z2Ã©
+1z2Ãª
+1z2i
+z4Ã­
+1z2o
+1z2Ã³
+1z2Ã´
+1z2u
+z1z
+e1Ãµ2e3z
+
+
+==========
+
+VersÃ£o 1.0.3 DivSilab. Nela foram implementados os seguintes recursos:
+
+.InclusÃ£o de regras para o par 'eg'. Corrigindo translineaÃ§Ã£o de 'segmento'.
+.InclusÃ£o de regras para o par 'Ã©g'.
+.InclusÃ£o de regras para o par 'eb'.
+.InclusÃ£o de regras para o par 'Ã©b'.
+.InclusÃ£o de regras para o par 'ed'.
+.InclusÃ£o de regras para o par 'Ã©d'.
+.InclusÃ£o de regras para o par 'ef'.
+.InclusÃ£o de regras para o par 'Ã©f'.
+.InclusÃ£o de regras para os pares: ab, Ã¡b, ad, Ã¡d, af, Ã¡f, ag, Ã¡g, ah,aj,ak, at e Ã¡t.
+.CorreÃ§Ã£o de regras para o par 'ob'.Corrigindo translineaÃ§Ã£o de 'problema'.
+
+=======================
+VersÃµes Anteriores
+
+VersÃ£o 1.0.2 DivSilab
+
+Nesta atualizaÃ§Ã£o foi implementado o DivSilab - Divisor de SÃ­labas do LibreOffice.
+
+Desenvolvido com base no lÃ©xico do VERO, atravÃ©s de anÃ¡lise combinatÃ³ria,
+extraÃ­ndo-se os casos reais e descartando-se as condiÃ§Ãµes inexistentes.
+
+O DivSilab Ã© um arquivo texto. Seu desenvolvimento estÃ¡ baseado no algorÃ­tmo de Frank M. Liang.
+O algorÃ­timo de Liang usa valores entre 0 e 9 exclui-se o valor 0 (zero), uma vez que estÃ¡
+implÃ­cito. Valores Ã­mpares indicam possÃ­veis pontos divisÃ£o silÃ¡bica, e os valores pares
+(incluindo 0) indicam pontos que nÃ£o devem ter divisÃ£o. NÃºmeros mais altos indicam uma maior
+magnitude do "melhor" para os nÃºmeros Ã­mpares, e pares uma maior amplitude do "pior".
+O ponto (.) indica a extremidade de uma palavra. Ã esquerda inÃ­cio e Ã  direita tÃ©rmino.
+
+Exemplo:
+Examinemos a palavra a baixo.
+
+  SilÃ¡bicas
+
+Extraindo-se do arquivo somente as regras envolvidas para a formaÃ§Ã£o desta palavra vamos encontrar:
+
+  s2i
+  i3l2Ã¡
+  l4Ã¡
+  Ã¡1b2
+  3b2i
+  i1c4
+  3c2a
+  2s.
+
+Compondo teremos:
+
+obs.: mude a fonte para Courier New para visualizar melhor o exemplo.
+
+s i l Ã¡ b i c a s
+s2i
+    l4Ã¡
+  i3l2Ã¡
+    l4Ã¡
+      Ã¡1b2
+       3b2i
+          i1c4
+           3c2a
+               2s.
+------------------
+s2i3l4Ã¡3b2i3c4a2s   <--- Resultado
+s i-l Ã¡-b i-c a s --> si-lÃ¡-bi-cas
+
+Obs.: ao resultado Ã© agregado o maior peso de cada coluna.
+
+
+
+Esquema de Liang
+--------------------------------------------------
+DescriÃ§Ã£o         Peso       Entrada Liang
+--------------------------------------------------
+Melhor que abaixo   5             9
+Melhor que abaixo   4             7
+Melhor que abaixo   3             5
+Melhor que abaixo   2             3
+AdmissÃ­vel          1             1
+Evitar              0             0
+Pior que acima     -1             2
+Pior que acima     -2             4
+Pior que acima     -3             6
+Pior que acima     -4             8
+--------------------------------------------------
+
+No nosso trabalho usamos atÃ© o nÃ­vel 6.
+Foram desenvolvidos trÃªs pequenos aplicativos. Um para gerar combinaÃ§Ãµes ' ab','ac' ,'ad'
+... 'ich', 'ras', etc, etc.
+O outro para conferir a existÃªncia destas combinaÃ§Ãµes no lÃ©xico do VERO, extraindo somente
+as vÃ¡lidas e o nÃºmero de ocorrÃªncias de cada uma.
+E um terceiro para extrair as regras envolvidas na composiÃ§Ã£o de uma determinada palavra.
+Usamos uma planilha no Calc para ordenar e configurar as regras, comeÃ§ando pelas de maior
+incidÃªncia. As combinaÃ§Ãµes Ã³bvias como 'ca', 'ba', 'pr', dr, bl...
+foram rapidamente configuradas ...'c2a', 'b2a', 'p4r', 'd4r', 'b4l' ...
+Para os mais complexos, extraÃ­mos do Vero todas as palavras contempladas com a combinaÃ§Ã£o
+pesquisada, e criamos as regras. Exemplo 'ic'
+mICAreta --> i3c2a
+frICCionar --> i2c3c4
+mICRo  --> i2c3r4
+...
+
+===============================================================================
+license-thes.readme
+===============================================================================
+
+/*
+ * Copyright 2003 Kevin B. Hendricks, Stratford, Ontario, Canada
+ * And Contributors.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * 3. All modifications to the source code must be clearly marked as
+ *    such.  Binary redistributions based on modified source code
+ *    must be clearly marked as modified versions in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY KEVIN B. HENDRICKS AND CONTRIBUTORS 
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL 
+ * KEVIN B. HENDRICKS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ */

@@ -1,0 +1,13 @@
+<comum:AplicativoOffice x:Class="mPlanilha.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:comum="clr-namespace:mOffice.Comum;assembly=mOffice.Comum">
+  <!-- Tokens.Claro na posicao 0 e' substituido por TemaService.Aplicar na subida (AplicativoOffice.OnStartup);
+       fica aqui pelo designer e para nunca existir um Cor.* sem valor antes do primeiro Aplicar. -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/mOffice.Comum;component/Temas/Tokens.Claro.xaml"/>
+        <ResourceDictionary Source="pack://application:,,,/mOffice.Comum;component/Temas/mOfficeTema.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+</comum:AplicativoOffice>

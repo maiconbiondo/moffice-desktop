@@ -1,0 +1,26 @@
+# Atribuicao mostrada na tela Sobre: Componente<TAB>Versao<TAB>Licenca, uma linha por componente redistribuido.
+# Espelho de docs/licencas/INVENTARIO.md (primeira coluna IGUAL; LicencasTests.Atribuicoes_IgualAoInventario confere).
+# Mora num .txt embutido, e nao no .cs, porque e' texto de atribuicao: nomes como os do SDK do WebView2 e de
+# bibliotecas de rede do motor sao DADOS aqui, e as guardas de fronteira (FronteiraTests/RedeConfinadaTests)
+# varrem o codigo. {versao} = versao do mOffice; {motor} = versao do ONLYOFFICE embarcado.
+mOffice (mTexto, mPlanilha, mSlides)	{versao}	AGPL-3.0
+ONLYOFFICE Desktop Editors	{motor}, versão modificada (MODIFICACOES-ONLYOFFICE.md)	AGPL-3.0 com termos adicionais; ilustrações e ícones CC BY-SA 4.0
+Bibliotecas JavaScript do ONLYOFFICE	jQuery, Backbone, Underscore, RequireJS, Socket.IO, XRegExp, Monaco Editor e outras	MIT, Apache-2.0
+Bibliotecas nativas do conversor ONLYOFFICE	V8, Boost, FreeType, HarfBuzz, libxml2, zlib, libpng, libjpeg, Crypto++, Gumbo	BSD, BSL-1.0, FTL, MIT, zlib
+ICU	74.2	Unicode License V3
+Hunspell	motor de ortografia do ONLYOFFICE	MPL-1.1 / GPL-2.0+ / LGPL-2.1+
+WeCantSpell.Hunspell	7.0.1	MPL-1.1 / GPL-2.0+ / LGPL-2.1+
+Dicionário pt_BR (VERO)	ortografia e hifenização	LGPL-2.1, LGPL-3.0
+Dicionário en_US (SCOWL)	2020.12.07	licença do SCOWL, WordNet, BSD
+Open Sans	fonte	Apache-2.0
+Asana Math	fonte	OFL-1.1
+Caladea	fonte	OFL-1.1
+Carlito	fonte	OFL-1.1
+OpenSymbol	fonte	OFL-1.0
+mOffice Simbolos	fonte de símbolos do editor	OFL-1.1
+Inter	4.001	OFL-1.1
+Phosphor Icons	2.1	MIT
+Microsoft Edge WebView2 Runtime	153.0.4234.48	termos de licença da Microsoft
+Microsoft.Web.WebView2 (SDK)	1.0.2903.40	licença BSD da Microsoft
+.NET 10 (runtime)	10.0.10	MIT
+CommunityToolkit.Mvvm	8.4.2	MIT

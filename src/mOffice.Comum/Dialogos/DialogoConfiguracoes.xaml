@@ -1,0 +1,94 @@
+<Window x:Class="mOffice.Comum.Dialogos.DialogoConfiguracoes"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:mOffice.Comum.Icones"
+        Title="Configurações" Width="500" SizeToContent="Height" WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False" ResizeMode="NoResize" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" FontFamily="{DynamicResource Fonte.Inter}">
+    <!-- ESTRUTURA copiada de src/mPdf.App/Views/ConfiguracoesDialog.xaml (header com icone-gradiente +
+         titulo/subtitulo arrastavel, corpo, rodape com Fechar); o CONTEUDO e' o da suite: tema (3 opcoes)
+         e o grampo de log da ponte. DataContext = DialogoConfiguracoesViewModel.
+         Tema mesclado LOCALMENTE (Application.Current e' null nas sondas STA). -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/mOffice.Comum;component/Temas/mOfficeTema.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Border Style="{StaticResource mOffice.Dialog.Superficie}" Margin="16">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Background="Transparent" BorderBrush="{DynamicResource Cor.BordaSutil}"
+                    BorderThickness="0,0,0,1" Padding="22,18" MouseLeftButtonDown="Cabecalho_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource mOffice.Dialog.IconeHeader}">
+                        <TextBlock FontFamily="{DynamicResource Fonte.PhosphorFill}" FontSize="17" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" Text="{icons:PhosphorIcon gear-six}"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="11,0,0,0">
+                        <TextBlock Text="Configurações" Style="{StaticResource mOffice.Dialog.Titulo}"/>
+                        <TextBlock Text="Aparência e diagnóstico" Style="{StaticResource mOffice.Dialog.Subtitulo}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border DockPanel.Dock="Bottom" Background="{DynamicResource Cor.FundoDialogoRodape}"
+                    BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,13,13" Padding="22,16">
+                <!-- Só IsCancel, como o mPDF: nada de Click adicional fechando por fora. -->
+                <Button Content="Fechar" HorizontalAlignment="Right" IsCancel="True"
+                        Style="{StaticResource mOffice.Button.DialogCancelar}"/>
+            </Border>
+
+            <StackPanel Margin="24,22">
+                <!-- Tema: 3 opcoes ligadas as booleanas do VM (sem converter). Cada set ja' grava no
+                     config E reaplica os tokens ao vivo — nao ha' botao "aplicar". -->
+                <TextBlock Text="Tema" Style="{StaticResource mOffice.Dialog.LabelForte}"/>
+                <UniformGrid Columns="3">
+                    <RadioButton GroupName="Tema" Style="{StaticResource mOffice.Segmento}" Margin="0,0,4,0"
+                                 Content="Seguir o Windows" IsChecked="{Binding Sistema}"/>
+                    <RadioButton GroupName="Tema" Style="{StaticResource mOffice.Segmento}" Margin="4,0"
+                                 Content="Claro" IsChecked="{Binding Claro}"/>
+                    <RadioButton GroupName="Tema" Style="{StaticResource mOffice.Segmento}" Margin="4,0,0,0"
+                                 Content="Escuro" IsChecked="{Binding Escuro}"/>
+                </UniformGrid>
+
+                <Border BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0" Margin="0,20,0,18"/>
+
+                <!-- Grampo da ponte: diagnostico, desligado por padrao. So' vale pra janelas NOVAS porque
+                     o grampo e' lido quando a ponte de uma janela e' montada. -->
+                <CheckBox Content="Registrar chamadas da ponte no log (diagnóstico; só vale para janelas novas)"
+                          IsChecked="{Binding Grampo}" Style="{StaticResource mOffice.Check}"/>
+
+                <Border BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0" Margin="0,20,0,18"/>
+
+                <!-- Atualizacoes (Plano 5, Task 2): SO' sob demanda — nada verifica sozinho. A rede so' acontece
+                     no clique (VerificarAtualizacoesCommand); a mensagem mostra o resultado em pt-BR. -->
+                <TextBlock Text="Atualizações" Style="{StaticResource mOffice.Dialog.LabelForte}"/>
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Content="Verificar atualizações" Margin="12,0,0,0"
+                            Command="{Binding VerificarAtualizacoesCommand}"
+                            Style="{StaticResource mOffice.Button.DialogSuaveAzul}"/>
+                    <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource Cor.TextoSecundario}">
+                        <Run Text="Versão instalada:"/> <Run Text="{Binding VersaoInstalada, Mode=OneWay}"/>
+                    </TextBlock>
+                </DockPanel>
+                <TextBlock Text="{Binding MensagemAtualizacao}" TextWrapping="Wrap" Margin="0,10,0,0"
+                           Foreground="{DynamicResource Cor.TextoPrimario}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <Trigger Property="Text" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </Trigger>
+                                <Trigger Property="Text" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</Window>

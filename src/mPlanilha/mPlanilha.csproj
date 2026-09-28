@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>mPlanilha</RootNamespace>
+    <!-- O AssemblyName NAO e' definido de proposito: vira "mPlanilha.exe" pelo nome do projeto (como no mPDF),
+         e e' esse nome que o pack URI do icone usa (PerfilApp.NomeExibicao). -->
+    <ApplicationIcon>Assets\mplanilha.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- UseWPF=true estreita os ImplicitUsings padrao (nao inclui System.IO) - licao do mPDF. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Tambem como RECURSO (alem de ApplicationIcon, que so' carimba o icone do .exe no Explorer): e' assim
+         que o pack URI "/mPlanilha;component/Assets/mplanilha.ico" resolve em runtime, para as janelas. -->
+    <Resource Include="Assets\mplanilha.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- SO' o Comum. O aplicativo nao conhece o nucleo nem o motor: toda a fiacao esta' em AplicativoOffice. -->
+    <ProjectReference Include="..\mOffice.Comum\mOffice.Comum.csproj" />
+  </ItemGroup>
+</Project>

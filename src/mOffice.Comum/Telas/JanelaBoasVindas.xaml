@@ -1,0 +1,20 @@
+<Window x:Class="mOffice.Comum.Telas.JanelaBoasVindas"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:telas="clr-namespace:mOffice.Comum.Telas"
+        Width="900" Height="620" MinWidth="720" MinHeight="520"
+        WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow"
+        Background="{DynamicResource Cor.FundoJanela}" FontFamily="{DynamicResource Fonte.Inter}">
+    <!-- Janela PRINCIPAL do app enquanto nao ha' documento aberto. Ao contrario dos dialogos (sem moldura),
+         esta usa a moldura NORMAL do Windows: e' a janela que o usuario minimiza/maximiza/fecha pela barra
+         de tarefas, e reimplementar isso so' pra combinar com os dialogos seria trocar comportamento
+         conhecido por enfeite. Title e' definido no construtor (vm.Titulo). -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/mOffice.Comum;component/Temas/mOfficeTema.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <telas:TelaBoasVindas/>
+</Window>

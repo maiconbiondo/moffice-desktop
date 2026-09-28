@@ -1,0 +1,114 @@
+AVISO DE ATRIBUICAO - ONLYOFFICE
+================================
+
+Este aviso cumpre os termos adicionais da AGPL-3.0 do ONLYOFFICE (secoes 1 a 5 do bloco
+"ADDITIONAL TERMS" em LICENCA-ONLYOFFICE-AGPL-3.0.txt) e a politica de marca da Ascensio
+System SIA. Ele acompanha toda distribuicao do mOffice e e' exibido na tela "Sobre".
+
+
+O que este programa e'
+----------------------
+
+O mOffice e' baseado no ONLYOFFICE Desktop Editors versao 9.4.0.129, desenvolvido
+originalmente por Ascensio System SIA, licenciado sob a GNU Affero General Public
+License version 3 (AGPL-3.0) com termos adicionais.
+
+O mOffice e' uma VERSAO MODIFICADA: ele nao e' o ONLYOFFICE Desktop Editors, nao e'
+publicado nem endossado pela Ascensio System SIA, e nao deve ser confundido com o
+produto original. O mOffice redistribui o motor de edicao do ONLYOFFICE (o conversor
+x2t e os editores em JavaScript, sdkjs e web-apps) dentro de uma casca propria, escrita
+do zero, sobre WPF e WebView2.
+
+O mOffice e' licenciado sob a mesma AGPL-3.0.
+
+
+Modificacoes
+------------
+
+AVISO DE MODIFICACAO (termos adicionais da AGPL-3.0 do ONLYOFFICE, secao 2): este software
+contem uma versao MODIFICADA do sdkjs do ONLYOFFICE 9.4.0.129. Modificacao feita em
+2026-09-19 pelo projeto mOffice, nos arquivos editors/sdkjs/word/sdk-all.js,
+editors/sdkjs/cell/sdk-all.js, editors/sdkjs/slide/sdk-all.js e
+editors/sdkjs/visio/sdk-all.js: a fonte de simbolos internos embutida em base64 nesses
+arquivos (familia "ASCW3", (c) Ascensio System SIA, sem licenca localizavel) foi
+substituida pela fonte "mOffice Simbolos", desenhada pelo mOffice e licenciada sob a SIL
+Open Font License 1.1 (docs/licencas/LICENCA-mOffice-Simbolos-OFL.txt). Nenhuma outra
+linha desses arquivos foi alterada. O patch e' aplicado por script reprodutivel
+(tools/onlyoffice/aplicar-patches.ps1) e esta documentado, com os hashes antes e depois,
+em docs/licencas/MODIFICACOES-ONLYOFFICE.md.
+
+Toda modificacao feita pelo mOffice na arvore redistribuida do ONLYOFFICE esta listada,
+arquivo a arquivo e com data, em:
+
+    docs/licencas/MODIFICACOES-ONLYOFFICE.md
+
+O codigo-fonte correspondente do mOffice, incluindo essas modificacoes, esta disponivel
+no repositorio publico do projeto, sob AGPL-3.0.
+
+Fonte correspondente dos binarios redistribuidos (x2t.exe, DLLs do core, sdkjs, web-apps):
+repositorios ONLYOFFICE/core, sdkjs, web-apps, DesktopEditors nas tags v9.4.0.129 (core
+commit a016fc2868b9f99f59dd30aa2088e68bbe5104af); o Marco 1 arquiva as arvores-fonte junto
+do release.
+
+
+Marcas
+------
+
+ONLYOFFICE is a trademark of Ascensio System SIA.
+
+O uso do nome ONLYOFFICE neste aviso e' nominativo: serve apenas para identificar a
+origem do software do qual o mOffice deriva, como exige a propria licenca. Nenhum
+direito sobre as marcas, logotipos ou identidade visual da Ascensio System SIA e'
+concedido pela AGPL-3.0 (secao 7(e) e secao 4 dos termos adicionais), e o mOffice nao
+usa nenhum deles: nome, icones, cores e identidade visual sao proprios.
+
+Politica de marca da Ascensio System SIA:
+    https://www.onlyoffice.com/trademark-policy
+
+
+Conteudo nao-codigo
+-------------------
+
+Ilustracoes, conjuntos de icones e textos de documentacao do ONLYOFFICE presentes na
+distribuicao estao sob Creative Commons Attribution-ShareAlike 4.0 International
+(CC BY-SA 4.0), conforme a secao 5 dos termos adicionais:
+    https://creativecommons.org/licenses/by-sa/4.0/legalcode
+
+
+Licenca completa
+----------------
+
+O texto integral da AGPL-3.0 com os termos adicionais do ONLYOFFICE esta em:
+
+    docs/licencas/LICENCA-ONLYOFFICE-AGPL-3.0.txt
+
+Contato da Ascensio System SIA: info@onlyoffice.com - 20A-6 Ernesta Birznieka-Upisha
+Street, Riga, LV-1050, Latvia, European Union.
+
+
+Fontes tipograficas redistribuidas
+----------------------------------
+
+    Open Sans .................. Apache License 2.0 .... LICENCA-FONTE-OPENSANS-APACHE-2.0.txt
+    Asana Math ................. SIL OFL 1.1 ........... LICENCA-FONTE-ASANA-MATH-OFL-1.1.txt
+    Caladea .................... SIL OFL 1.1 ........... LICENCA-FONTE-CALADEA-OFL-1.1.txt
+    Carlito .................... SIL OFL 1.1 ........... LICENCA-FONTE-CARLITO-OFL-1.1.txt
+    OpenSymbol ................. SIL OFL 1.0 ........... LICENCA-FONTE-OPENSYMBOL-OFL-1.0.txt
+    mOffice Simbolos ........... SIL OFL 1.1 ........... LICENCA-mOffice-Simbolos-OFL.txt
+        (fonte de simbolos internos do editor, desenhada pelo mOffice; embutida em base64
+        nos sdk-all.js no lugar da fonte "ASCW3" da Ascensio - ver "Modificacoes" acima)
+
+As fontes da Microsoft e do Windows (Arial, Calibri, Aptos, Times New Roman e as demais
+instaladas no sistema) sao usadas APENAS em tempo de execucao, lidas da instalacao do
+proprio Windows do usuario. Elas NUNCA sao redistribuidas pelo mOffice.
+
+NOTA SOBRE O ASC.ttf (familia "ASCW3"): o arquivo que vem na pasta fonts/ do ONLYOFFICE NAO
+tem licenca localizavel - nem no pacote, nem no repositorio de origem
+(github.com/ONLYOFFICE/core-fonts, onde ele esta na raiz, sem LICENSE ao lado, ao
+contrario de todas as outras familias). Seus metadados dizem apenas "Copyright (c)
+Ascensio System SIA 2012-2014. All rights reserved" e "ASCW3 is a trademark of Ascensio
+System SIA". Por isso o mOffice NAO o redistribui em forma alguma: o arquivo solto fica
+fora do pacote desde 2026-09-18, e desde 2026-09-19 a copia embutida nos sdk-all.js foi
+substituida pela fonte "mOffice Simbolos" (acima). A pergunta a Ascensio System SIA sobre
+a licenca do ASC.ttf segue em paralelo, por cortesia e para registro; nao e' mais
+condicao para distribuir. Ver docs/licencas/AVISO-fontes.md, secao 1.

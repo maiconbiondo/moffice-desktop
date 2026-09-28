@@ -1,0 +1,31 @@
+es6-promise, biblioteca JavaScript usada pelo web-apps do ONLYOFFICE 9.4.0.129 (motor\editors\web-apps\vendor).
+O .js minificado dessa pasta nao traz cabecalho de licenca proprio (Task 4).
+
+ORIGEM: arquivo LICENSE do repositorio oficial github.com/stefanpenner/es6-promise, branch master, obtido
+de https://raw.githubusercontent.com/stefanpenner/es6-promise/master/LICENSE em 2026-09-27. O texto da
+licenca MIT desse projeto e' o mesmo desde 2014 e nao muda entre versoes publicadas do pacote.
+Licenca: MIT.
+
+===============================================================================
+LICENSE (es6-promise, branch master) - texto verbatim
+===============================================================================
+
+Copyright (c) 2014 Yehuda Katz, Tom Dale, Stefan Penner and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
