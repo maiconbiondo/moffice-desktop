@@ -44,6 +44,21 @@ public class GerenteDeJanelasTests
         return (g, janelas, eventos);
     }
 
+    [Fact] // Ctrl+F6: cicla entre as abertas na ordem de abertura; da ultima volta a primeira; com uma so' devolve ela mesma
+    public async Task ProximaDepois_CiclaEntreAsAbertas()
+    {
+        var (g, janelas, _) = Montar();
+        Assert.Null(g.ProximaDepois(new JanelaFake(null)));            // sem janelas
+        await g.AbrirAsync(@"C:\a.docx");
+        Assert.Same(janelas[0], g.ProximaDepois(janelas[0]));          // uma so'
+        await g.AbrirAsync(@"C:\b.docx"); await g.AbrirAsync(@"C:\c.docx");
+        Assert.Same(janelas[1], g.ProximaDepois(janelas[0]));
+        Assert.Same(janelas[2], g.ProximaDepois(janelas[1]));
+        Assert.Same(janelas[0], g.ProximaDepois(janelas[2]));          // da ultima volta a primeira
+        janelas[1].Disparar();                                         // fechou uma: o ciclo se refaz sobre as que restam
+        Assert.Same(janelas[2], g.ProximaDepois(janelas[0]));
+    }
+
     [Fact] // abrir esconde a boas-vindas e cria a janela; o mesmo caminho so' ativa
     public async Task Abrir_CriaUmaVezEAtivaDepois()
     {

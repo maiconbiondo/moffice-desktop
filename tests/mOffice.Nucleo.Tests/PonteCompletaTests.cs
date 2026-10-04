@@ -16,12 +16,15 @@ public class PonteCompletaTests
     /// Conferido nos bundles 9.4.0.129 em 2026-09-25; os 7 ultimos, nos sdk-all-min.js, na revisao final do Plano 4
     /// (cada chamada provada por <see cref="ListaSoComTeste_SoTemNomesQueOMotorTestaAntes"/>).</summary>
     private static readonly HashSet<string> SoComTesteDeExistencia =
-        ["IsFilePrinting", "SetLocalRestrictions", "getEngineVersion", "isSupportPlugins",
-         "CallMediaPlayerCommand", "GetImageOriginalSize", "getDictionariesPath", "isSupportMacroses", "onFileLockedClose",
+        ["IsFilePrinting", "getEngineVersion", "isSupportPlugins",
+         "CallMediaPlayerCommand", "GetImageOriginalSize", "isSupportMacroses", "onFileLockedClose",
          "SetPdfCloudPrintFileInfo", "IsSignaturesSupport"];
 
-    private static readonly Regex Chamada = new(@"(?:AscDesktopEditor|window\.desktop)\.([A-Za-z_]+)\s*\(", RegexOptions.Compiled);
-    private static readonly Regex Implementada = new(@"^\s+([A-Za-z_]+)\s*:", RegexOptions.Compiled | RegexOptions.Multiline);
+    // Plano 6, Task 8 (auditoria motor-vs-ponte): nomes COM DIGITO (GetImageBase64, LoadFontBase64, localSaveToDrawingFormat2,
+    // Crypto_GetLocalImageBase64) ficavam fora das duas regex antigas ([A-Za-z_]+): a guarda passava com GetImageBase64 ausente.
+    // getDictionariesPath saiu da lista "so' com teste" na mesma task: agora e' implementada (hifenizacao), e tira-la da ponte tem de falhar aqui.
+    private static readonly Regex Chamada = new(@"(?:AscDesktopEditor|window\.desktop)\.([A-Za-z_][A-Za-z0-9_]*)\s*\(", RegexOptions.Compiled);
+    private static readonly Regex Implementada = new(@"^\s+([A-Za-z_][A-Za-z0-9_]*)\s*:", RegexOptions.Compiled | RegexOptions.Multiline);
 
     private static IEnumerable<string> Bundles(string motor)
     {
@@ -56,6 +59,7 @@ public class PonteCompletaTests
         Assert.True(lidos >= 12, $"varredura vazia: so' {lidos} bundles lidos"); // piso: a guarda nao pode passar por nao ter olhado nada
         Assert.Contains("CheckNeedWheel", chamadas); // controle positivo: o caso real de 2026-09-25 e' enxergado
         Assert.Contains("OpenWorkbook", chamadas);   // controle positivo 2: so' existe no cell/sdk-all-min.js (revisao final do Plano 4)
+        Assert.Contains("GetImageBase64", chamadas); // controle positivo 3: nome com digito, o caso cego medido pela auditoria (Plano 6, Task 8)
 
         var ponte = File.ReadAllText(Path.Combine(raiz, "src", "mOffice.Nucleo", "Ponte", "ponte-desktop.js"));
         var implementadas = Implementada.Matches(ponte).Select(m => m.Groups[1].Value).ToHashSet(StringComparer.Ordinal);

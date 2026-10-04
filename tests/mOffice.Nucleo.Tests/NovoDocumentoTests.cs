@@ -24,13 +24,14 @@ public class NovoDocumentoTests
     public void ModeloVazio_Caminho_PreferePtBrDepoisDefault()
     {
         var motor = Path.Combine(Path.GetTempPath(), "mOffice-testes", Guid.NewGuid().ToString("N"));
+        var semProprios = Path.Combine(motor, "sem-modelos-proprios"); // os proprios do mOffice (Task 9) vem antes e existem no exe: aqui isolados
         var def = Path.Combine(motor, "converter", "empty", "default"); Directory.CreateDirectory(def);
         File.WriteAllBytes(Path.Combine(def, "new.docx"), [1]);
-        Assert.Equal(Path.Combine(def, "new.docx"), ModelosVazios.Caminho(new ConfiguracaoMotor(motor), FormatoDocumento.Docx));
+        Assert.Equal(Path.Combine(def, "new.docx"), ModelosVazios.Caminho(new ConfiguracaoMotor(motor), FormatoDocumento.Docx, semProprios));
         var pt = Path.Combine(motor, "converter", "empty", "pt-BR"); Directory.CreateDirectory(pt);
         File.WriteAllBytes(Path.Combine(pt, "new.docx"), [1]);
-        Assert.Equal(Path.Combine(pt, "new.docx"), ModelosVazios.Caminho(new ConfiguracaoMotor(motor), FormatoDocumento.Docx));
-        var ex = Assert.Throws<FileNotFoundException>(() => ModelosVazios.Caminho(new ConfiguracaoMotor(motor), FormatoDocumento.Xlsx));
+        Assert.Equal(Path.Combine(pt, "new.docx"), ModelosVazios.Caminho(new ConfiguracaoMotor(motor), FormatoDocumento.Docx, semProprios));
+        var ex = Assert.Throws<FileNotFoundException>(() => ModelosVazios.Caminho(new ConfiguracaoMotor(motor), FormatoDocumento.Xlsx, semProprios));
         Assert.Contains("new.xlsx", ex.Message);
     }
 
@@ -38,11 +39,12 @@ public class NovoDocumentoTests
     public void Sessao_Titulo_NovoPorTipo()
     {
         var s = new SessaoDocumento { ArquivoOrigem = @"C:\x\novo.docx", Formato = FormatoDocumento.Odt, PastaRecovery = @"C:\x", Novo = true };
-        Assert.Equal("Documento", s.Titulo);
+        Assert.Equal("Documento", s.Titulo);   // sessao criada a mao: sem numero
+        Assert.Equal("Documento7", new SessaoDocumento { ArquivoOrigem = @"C:\x\novo.docx", Formato = FormatoDocumento.Odt, PastaRecovery = @"C:\x", Novo = true, NumeroDoNovo = 7 }.Titulo);
         s.Repontar(@"C:\y\peticao.odt", FormatoDocumento.Odt);
         Assert.False(s.Novo);
         Assert.Equal("peticao.odt", s.Titulo);
-        Assert.Equal("Planilha", new SessaoDocumento { ArquivoOrigem = "a.xlsx", Formato = FormatoDocumento.Ods, PastaRecovery = "p", Novo = true }.Titulo);
+        Assert.Equal("Pasta", new SessaoDocumento { ArquivoOrigem = "a.xlsx", Formato = FormatoDocumento.Ods, PastaRecovery = "p", Novo = true }.Titulo);
         Assert.Equal("Apresentação", new SessaoDocumento { ArquivoOrigem = "a.pptx", Formato = FormatoDocumento.Pptx, PastaRecovery = "p", Novo = true }.Titulo);
     }
 
@@ -58,11 +60,12 @@ public class NovoDocumentoTests
             await j.NovoAsync(FormatoDocumento.Docx);
             Assert.Equal("true", await EditorReal.Esperar(j, EditorReal.ProntoNoEditor, "true", 150));
             Assert.True(j.SessaoAtual!.Novo);
-            Assert.Equal("Documento — mTexto", j.Title);
+            Assert.True(j.SessaoAtual.NumeroDoNovo >= 1);
+            Assert.Equal($"Documento{j.SessaoAtual.NumeroDoNovo} — mTexto", j.Title);
             await Assert.ThrowsAsync<InvalidOperationException>(() => j.SalvarAsync());
             await j.ExecutarJsAsync(EditorReal.InserirTextoWord("texto novo"));
             Assert.Equal("true", await EditorReal.Esperar(j, EditorReal.EspelhoModificado, "true", 50));  // espelho JS do Modificado
-            Assert.Equal("Documento* — mTexto", j.Title);
+            Assert.Equal($"Documento{j.SessaoAtual.NumeroDoNovo}* — mTexto", j.Title);
             var destino = Path.Combine(pasta, "novo.docx");
             await j.SalvarComoAsync(destino, FormatoDocumento.Docx);
             Assert.False(j.SessaoAtual!.Novo);

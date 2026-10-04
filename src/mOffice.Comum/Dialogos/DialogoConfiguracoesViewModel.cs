@@ -40,6 +40,7 @@ public sealed partial class DialogoConfiguracoesViewModel : ObservableObject
         Func<IReadOnlyList<string>>? outrosAppsAbertos = null, string nomeApp = "mOffice")
     {
         _config = config; _tema = tema; _modoTema = config.Tema; _grampo = config.Grampo;
+        _nome = config.NomeUsuario ?? ""; _pastaSalvar = config.PastaPadraoSalvar ?? ""; _pastaModelos = config.PastaModelos ?? "";
         _criarFonte = criarFonte ?? ServicoAtualizacao.CriarFontePadrao;
         _confirmar = confirmar ?? ConfirmarNoSistema;
         _outrosAppsAbertos = outrosAppsAbertos ?? (() => []);
@@ -50,11 +51,67 @@ public sealed partial class DialogoConfiguracoesViewModel : ObservableObject
     partial void OnModoTemaChanged(ModoTema value)
     {
         _config.Tema = value; _tema.Aplicar(value);
+        // Escolher Claro/Escuro/Sistema no mOffice faz o tema do mOffice voltar a mandar no editor (zera o escolhido la' dentro).
+        _config.TemaEditorId = null;
         // Roda DEPOIS da atribuicao: as tres booleanas dos RadioButton ja' refletem o valor novo.
         OnPropertyChanged(nameof(Sistema)); OnPropertyChanged(nameof(Claro)); OnPropertyChanged(nameof(Escuro));
     }
 
     [ObservableProperty] private bool _grampo;
+
+    // ---- Geral / Salvar / Modelos (Plano 6, Task 4) ----------------------------------------------------
+    // Cada set grava no config na hora (como o tema); valem para janelas NOVAS. Campo vazio = voltar ao padrao (null).
+
+    // Texto como digitado (o config guarda aparado): com UpdateSourceTrigger=PropertyChanged, devolver o aparado
+    // faria o TextBox engolir o espaco no meio da digitacao.
+    private string _nome = "", _pastaSalvar = "", _pastaModelos = "";
+
+    /// <summary>Nome do autor (comentarios e alteracoes controladas). Vazio = o do Office/Windows.</summary>
+    public string NomeUsuario
+    {
+        get => _nome;
+        set { _nome = value ?? ""; _config.NomeUsuario = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>O nome que valeria sem o campo (marca d'agua do TextBox): "Nome de usuario" do Office, nome do Windows…</summary>
+    public string NomeEfetivo => mOffice.Nucleo.Autor.DoWindows().Nome;
+
+    /// <summary>Pasta onde "Salvar como" de documento novo abre. Vazio = Documentos.</summary>
+    public string PastaPadraoSalvar
+    {
+        get => _pastaSalvar;
+        set { _pastaSalvar = value ?? ""; _config.PastaPadraoSalvar = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Pasta de modelos pessoais. Vazio = a do Office (<see cref="Configuracoes.PastaModelosEfetiva"/>).</summary>
+    public string PastaModelos
+    {
+        get => _pastaModelos;
+        set { _pastaModelos = value ?? ""; _config.PastaModelos = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Marca d'agua da pasta padrao para salvar.</summary>
+    public string PastaDocumentos => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+    public string PastaModelosPadrao => Configuracoes.PastaModelosDoOffice;
+
+    public bool FormatoOoxml { get => !_config.FormatoOdf; set { if (value) { _config.FormatoOdf = false; NotificarFormato(); } } }
+    public bool FormatoOpenDocument { get => _config.FormatoOdf; set { if (value) { _config.FormatoOdf = true; NotificarFormato(); } } }
+    private void NotificarFormato() { OnPropertyChanged(nameof(FormatoOoxml)); OnPropertyChanged(nameof(FormatoOpenDocument)); }
+
+    /// <summary>A caixa do grampo (diagnostico) fica escondida ate o usuario pedir: e' coisa de suporte, nao do usuario final.</summary>
+    [ObservableProperty] private bool _diagnosticoVisivel;
+
+    [RelayCommand] private void MostrarDiagnostico() => DiagnosticoVisivel = true;
+
+    [RelayCommand] private void ProcurarPastaSalvar() { if (EscolherPasta(PastaPadraoSalvar) is { } p) PastaPadraoSalvar = p; }
+    [RelayCommand] private void ProcurarPastaModelos() { if (EscolherPasta(string.IsNullOrEmpty(PastaModelos) ? PastaModelosPadrao : PastaModelos) is { } p) PastaModelos = p; }
+
+    private static string? EscolherPasta(string inicial)
+    {
+        var d = new Microsoft.Win32.OpenFolderDialog { Title = "Escolher pasta", InitialDirectory = Directory.Exists(inicial) ? inicial : "" };
+        return d.ShowDialog() == true ? d.FolderName : null;
+    }
 
     /// <summary>Grava a configuracao E aplica ao estado vivo do processo (achado da revisao final do Plano 2):
     /// sem a segunda linha, ligar o grampo nas Configuracoes so' tinha efeito no proximo arranque do app —

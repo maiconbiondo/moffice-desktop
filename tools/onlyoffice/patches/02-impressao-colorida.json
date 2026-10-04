@@ -1,0 +1,12 @@
+{
+  "descricao": "Impressao colorida por padrao no painel Imprimir (Plano 6, Task 8; achado A6): o valor inicial do seletor de cor passa de preto e branco para colorido. O proprio web-apps volta a preto e branco quando a impressora nao informa color_supported (setCmbColorPrintingDisabled).",
+  "versaoMotor": "9.4.0.129",
+  "arquivos": [
+    { "arquivo": "editors/web-apps/apps/documenteditor/main/code.js",
+      "trocas": [ { "de": "this.cmbColorPrinting.setValue(\"black-and-white\"),this._colorPrinting=\"black-and-white\"", "para": "this.cmbColorPrinting.setValue(\"color\"),this._colorPrinting=\"color\"", "ocorrencias": 1 } ] },
+    { "arquivo": "editors/web-apps/apps/spreadsheeteditor/main/code.js",
+      "trocas": [ { "de": "this.cmbColorPrinting.setValue(\"black-and-white\"),this._colorPrinting=\"black-and-white\"", "para": "this.cmbColorPrinting.setValue(\"color\"),this._colorPrinting=\"color\"", "ocorrencias": 1 } ] },
+    { "arquivo": "editors/web-apps/apps/presentationeditor/main/code.js",
+      "trocas": [ { "de": "this.cmbColorPrinting.setValue(\"black-and-white\"),this._colorPrinting=\"black-and-white\"", "para": "this.cmbColorPrinting.setValue(\"color\"),this._colorPrinting=\"color\"", "ocorrencias": 1 } ] }
+  ]
+}

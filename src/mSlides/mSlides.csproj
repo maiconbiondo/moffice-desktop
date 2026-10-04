@@ -9,6 +9,8 @@
     <!-- O AssemblyName NAO e' definido de proposito: vira "mSlides.exe" pelo nome do projeto (como no mPDF),
          e e' esse nome que o pack URI do icone usa (PerfilApp.NomeExibicao). -->
     <ApplicationIcon>Assets\mslides.ico</ApplicationIcon>
+    <!-- PerMonitorV2 (SO-13): o MESMO manifesto para os tres apps (src/app.manifest). -->
+    <ApplicationManifest>..\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <!-- UseWPF=true estreita os ImplicitUsings padrao (nao inclui System.IO) - licao do mPDF. -->

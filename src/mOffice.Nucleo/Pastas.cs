@@ -29,7 +29,11 @@ public static class Pastas
     /// janela apaga os dela ao fechar; a subida do app varre os que sobraram (<see cref="mOffice.Nucleo.Impressao.PastaImpressao"/>).</summary>
     public static string Impressao => ImpressaoEm(Raiz);
 
+    /// <summary>"Não salvos recentemente" (Plano 6, Task 10): o que o "Não salvar" do fechamento move da recuperação e fica 4 dias.</summary>
+    public static string Descartados => DescartadosEm(Raiz);
+
     public static string RecuperacaoEm(string raiz) => Path.Combine(raiz, "recuperacao");
+    public static string DescartadosEm(string raiz) => Path.Combine(raiz, "descartados");
     public static string LogsEm(string raiz) => Path.Combine(raiz, "logs");
     public static string ConfigEm(string raiz) => Path.Combine(raiz, "config.json");
     public static string RecentesEm(string raiz, string app) => Path.Combine(raiz, $"recentes-{app.ToLowerInvariant()}.json");

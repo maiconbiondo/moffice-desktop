@@ -1,16 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Arquivo de associacoes padrao do Windows (DefaultAssociationsConfiguration) - REFERENCIA.
-     Forca .docx/.odt -> mTexto, .xlsx/.ods -> mPlanilha e .pptx/.odp -> mSlides a cada logon, para TODOS
-     os usuarios da maquina. Os ProgIDs sao registrados pela task "associar" do instalador (moffice.iss): a
-     maquina precisa ter o mOffice instalado com essa opcao marcada.
-     Aplicado pelo aplicar-padrao-office.ps1 (mass-command do RMM), que traz estas mesmas seis linhas
-     (um teste confere que as tres listas - este arquivo, o script e o .iss - batem) e as JUNTA com as
-     associacoes que a politica ja tinha (ex.: a do mPDF para .pdf), em vez de sobrescreve-las. -->
+<!-- GERADO por tests/mOffice.Comum.Tests/GeradorAssociacoes.cs a partir de TabelaFormatos - nao editar a mao.
+     Associacoes padrao do Windows (DefaultAssociationsConfiguration) - REFERENCIA. Forca documentos, planilhas e
+     apresentacoes (.docx/.docm/.doc/.odt/.rtf, .xlsx/.xlsm/.xls/.ods, .pptx/.pptm/.ppsx/.ppt/.odp, e os modelos .dotx/.xltx/.potx)
+     para mTexto, mPlanilha e mSlides a cada logon, para TODOS os usuarios da maquina. Os ProgIDs sao registrados pela task
+     "associar" do instalador (moffice.iss): a maquina precisa ter o mOffice instalado com essa opcao marcada.
+     Aplicado pelo aplicar-padrao-office.ps1 (mass-command do RMM), que le' a lista de tools/installer/associacoes.json (gerada da
+     mesma tabela) e a JUNTA com as associacoes que a politica ja tinha (ex.: a do mPDF para .pdf), em vez de sobrescreve-las. -->
 <DefaultAssociations>
   <Association Identifier=".docx" ProgId="mOffice.Texto.docx" ApplicationName="mTexto" />
+  <Association Identifier=".docm" ProgId="mOffice.Texto.docm" ApplicationName="mTexto" />
+  <Association Identifier=".dotx" ProgId="mOffice.Texto.dotx" ApplicationName="mTexto" />
+  <Association Identifier=".doc" ProgId="mOffice.Texto.doc" ApplicationName="mTexto" />
   <Association Identifier=".odt" ProgId="mOffice.Texto.odt" ApplicationName="mTexto" />
+  <Association Identifier=".rtf" ProgId="mOffice.Texto.rtf" ApplicationName="mTexto" />
   <Association Identifier=".xlsx" ProgId="mOffice.Planilha.xlsx" ApplicationName="mPlanilha" />
+  <Association Identifier=".xlsm" ProgId="mOffice.Planilha.xlsm" ApplicationName="mPlanilha" />
+  <Association Identifier=".xltx" ProgId="mOffice.Planilha.xltx" ApplicationName="mPlanilha" />
+  <Association Identifier=".xls" ProgId="mOffice.Planilha.xls" ApplicationName="mPlanilha" />
   <Association Identifier=".ods" ProgId="mOffice.Planilha.ods" ApplicationName="mPlanilha" />
   <Association Identifier=".pptx" ProgId="mOffice.Slides.pptx" ApplicationName="mSlides" />
+  <Association Identifier=".pptm" ProgId="mOffice.Slides.pptm" ApplicationName="mSlides" />
+  <Association Identifier=".potx" ProgId="mOffice.Slides.potx" ApplicationName="mSlides" />
+  <Association Identifier=".ppsx" ProgId="mOffice.Slides.ppsx" ApplicationName="mSlides" />
+  <Association Identifier=".ppt" ProgId="mOffice.Slides.ppt" ApplicationName="mSlides" />
   <Association Identifier=".odp" ProgId="mOffice.Slides.odp" ApplicationName="mSlides" />
 </DefaultAssociations>

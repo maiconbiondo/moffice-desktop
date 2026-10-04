@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <None Include="Ponte\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Modelos vazios proprios (Calibri 11 etc.), gerados por tools/modelos/gerar-modelos.py (Plano 6, Task 9). -->
+    <None Include="Modelos\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -98,6 +98,53 @@ public static class Midia
         finally { trava.Release(); }
     }
 
+    /// <summary>
+    /// Midia de um documento CONVERTIDO pelo host (Plano 6, Task 8: Inserir texto do arquivo, Comparar/Combinar) entra no media/ do documento
+    /// ABERTO e o mapa devolvido diz ao sdkjs o nome novo de cada uma. MEDIDO em sdkjs/word/sdk-all.js 9.4.0.129: ao ler o binario inserido, cada
+    /// figura passa por <c>this.LR.KR[AscCommon.Ss.Oqa + id]</c> (<c>Oqa = "media/"</c>) e, se houver entrada, o id da figura vira o VALOR — que
+    /// depois e' resolvido como qualquer midia do documento (<c>tia + "/media/" + id</c>) e e' o que o x2t procura em media/ ao salvar. Por isso
+    /// o valor e' um NOME em media/ (nunca URL nem caminho): a figura aparece, salva e reabre como as do proprio documento.
+    ///
+    /// Cada nome-base do original (<c>image1</c>) ganha UM nome-base novo livre (<c>imageN</c>) e TODAS as extensoes dele vao juntas: o sdkjs troca
+    /// <c>.emf</c>/<c>.wmf</c> por <c>.svg</c> no id (o x2t grava os dois), entao o par tem de continuar com o mesmo nome-base. Mesma trava e mesma
+    /// numeracao de <see cref="GravarImagemAsync"/>. Os arquivos sao do x2t (vieram de um arquivo que o usuario escolheu no dialogo do host);
+    /// a extensao so' e' mantida se for curta e alfanumerica. Chaves: <c>media/&lt;nome original&gt;</c>.
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<string, string>> ImportarMidiaConvertidaAsync(SessaoDocumento sessao, string pastaMediaConvertida)
+    {
+        ArgumentNullException.ThrowIfNull(sessao);
+        var mapa = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!Directory.Exists(pastaMediaConvertida)) return mapa;
+        var grupos = Directory.EnumerateFiles(pastaMediaConvertida)
+            .Where(f => ExtensaoSegura(Path.GetExtension(f)))
+            .GroupBy(f => Path.GetFileNameWithoutExtension(f), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (grupos.Count == 0) return mapa;
+        var pasta = PastaDeMidia(sessao);
+        Directory.CreateDirectory(pasta);
+        var trava = TravaDaSessao(sessao);
+        await trava.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            foreach (var g in grupos)
+            {
+                var indice = Directory.EnumerateFiles(pasta).Count() + 1;
+                while (Directory.EnumerateFiles(pasta, "image" + indice + ".*").Any()) indice++;
+                foreach (var origem in g)
+                {
+                    var novo = "image" + indice + Path.GetExtension(origem).ToLowerInvariant();
+                    File.Copy(origem, Path.Combine(pasta, novo), overwrite: false);
+                    mapa[PastaMedia + "/" + Path.GetFileName(origem)] = novo;
+                }
+            }
+        }
+        finally { trava.Release(); }
+        return mapa;
+    }
+
+    private static bool ExtensaoSegura(string ext) =>
+        ext.Length is >= 2 and <= 6 && ext[0] == '.' && ext.Skip(1).All(char.IsAsciiLetterOrDigit);
+
     /// <summary>Extensao pelo CONTEUDO (assinatura dos primeiros bytes), no mesmo conjunto que o app oficial
     /// copia sem reconverter: png, jpg, gif, svg — mais bmp, que o proprio sdkjs exibe. <c>declarada</c> e'
     /// usada so' para o SVG, que e' texto e nao tem assinatura binaria propria. <c>null</c> = nao e' imagem.

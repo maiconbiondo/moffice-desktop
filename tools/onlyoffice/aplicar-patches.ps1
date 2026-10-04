@@ -35,18 +35,29 @@
   nao faz nada.
 .PARAMETER VersaoEsperada
   Versao do motor para a qual este patch foi medido.
+.PARAMETER PastaPatches
+  Patches de TEXTO (Plano 6): tools/onlyoffice/patches/NN-nome.json. Formato e regras no bloco "Patches de TEXTO" abaixo.
+.PARAMETER SoPatchesDeTexto
+  Pula o patch da fonte de simbolos (usado pelos testes com um motor-miniatura que so' tem VERSAO.txt e os arquivos citados).
 .EXAMPLE
   tools\onlyoffice\aplicar-patches.ps1
   tools\onlyoffice\aplicar-patches.ps1 -Reverter
 #>
 [CmdletBinding()]
 param(
-    [string]$PastaMotor = (Join-Path $PSScriptRoot "..\..\third_party\onlyoffice"),
-    [string]$Fonte = (Join-Path $PSScriptRoot "..\fontes\mOffice-Simbolos.ttf"),
+    [string]$PastaMotor = "",
+    [string]$Fonte = "",
     [switch]$Reverter,
-    [string]$VersaoEsperada = "9.4.0.129"
+    [string]$VersaoEsperada = "9.4.0.129",
+    [string]$PastaPatches = "",
+    [switch]$SoPatchesDeTexto
 )
 $ErrorActionPreference = "Stop"
+# Padroes resolvidos AQUI e nao no param(): $PSScriptRoot chega vazio nos valores padrao do param() em algumas sessoes do PS 5.1 (medido).
+$pastaDoScript = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $PastaMotor) { $PastaMotor = Join-Path $pastaDoScript "..\..\third_party\onlyoffice" }
+if (-not $Fonte) { $Fonte = Join-Path $pastaDoScript "..\fontes\mOffice-Simbolos.ttf" }
+if (-not $PastaPatches) { $PastaPatches = Join-Path $pastaDoScript "patches" }
 
 # sha256 do blob original (decodificado) - o que este script REMOVE do pacote. Igual ao de fonts/ASC.ttf.
 $shaOriginal = "35ff902a3b9c9254ce3c57d610dad9e57008b8a3351691c463bee775644c1e18"
@@ -85,11 +96,109 @@ if ($versao -ne $VersaoEsperada) {
     throw "Motor na versao '$versao', patch medido para '$VersaoEsperada'. NAO aplicado: refaca e re-meca o patch (docs/licencas/AVISO-fontes.md, secao 1.5) antes de liberar para a versao nova."
 }
 
+# --- Patches de TEXTO (Plano 6): tools/onlyoffice/patches/NN-nome.json ------------------------------------------------------
+# Formato: { "descricao", "versaoMotor", "arquivos": [ { "arquivo": "<caminho relativo ao motor, com />",
+#            "trocas": [ { "de": "<trecho EXATO>", "para": "<trecho novo>", "ocorrencias": N } ] } ] }
+# Regras: (1) o arquivo e' lido como UTF-8 ESTRITO, BOM preservado; (2) cada troca tem de achar "de" exatamente N vezes e "para" 0
+# vezes (aplicar) - ou "de" 0 e "para" N vezes (ja aplicado); qualquer outra contagem para SEM GRAVAR NADA (nem do patch da fonte);
+# (3) cada arquivo do motor pertence a UM so' patch .json (o .orig e' por arquivo) e nenhum e' um dos sdk-all.js do patch da fonte
+# (que usa o mesmo .orig); (4) o resultado e' conferido ANTES de gravar e RELIDO do disco depois; (5) .orig ao lado na primeira
+# aplicacao; -Reverter restaura dos .orig. As Tasks 8/9 do Plano 6 so' acrescentam arquivos NN-*.json.
+$utf8Estrito = New-Object Text.UTF8Encoding($false, $true)
+function Contar([string]$texto, [string]$trecho) { $n = 0; $i = 0; while (($i = $texto.IndexOf($trecho, $i, [StringComparison]::Ordinal)) -ge 0) { $n++; $i += $trecho.Length }; $n }
+function LerTextoDoMotor([string]$alvo) {
+    $bytes = [IO.File]::ReadAllBytes($alvo)
+    $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+    $off = if ($bom) { 3 } else { 0 }
+    return [pscustomobject]@{ Texto = $utf8Estrito.GetString($bytes, $off, $bytes.Length - $off); Bom = $bom }
+}
+function GravarTextoDoMotor([string]$alvo, [string]$texto, [bool]$bom) {
+    $saida = $utf8Estrito.GetBytes($texto)
+    if ($bom) { $saida = [byte[]](@([byte]0xEF, [byte]0xBB, [byte]0xBF) + $saida) }
+    [IO.File]::WriteAllBytes($alvo, $saida)
+}
+function ListarPatchesDeTexto {
+    $achados = @()
+    if (-not (Test-Path -LiteralPath $PastaPatches)) { return $achados }
+    $vistos = @{}
+    foreach ($json in (Get-ChildItem -LiteralPath $PastaPatches -Filter *.json | Sort-Object Name)) {
+        $p = [IO.File]::ReadAllText($json.FullName, $utf8Estrito) | ConvertFrom-Json
+        if ($p.versaoMotor -ne $VersaoEsperada) { throw "$($json.Name): patch para '$($p.versaoMotor)', motor '$VersaoEsperada'. NAO aplicado." }
+        foreach ($a in $p.arquivos) {
+            $chave = ([string]$a.arquivo).ToLowerInvariant().Replace('\', '/')
+            if ($vistos.ContainsKey($chave)) { throw "$($json.Name): '$($a.arquivo)' ja' e' alterado por $($vistos[$chave]) - um arquivo do motor pertence a um so' patch." }
+            $vistos[$chave] = $json.Name
+            if ($chave -match '^editors/sdkjs/(word|cell|slide|visio)/sdk-all\.js$') { throw "$($json.Name): '$($a.arquivo)' e' do patch da fonte de simbolos (mesmo .orig) - nao pode ter patch de texto." }
+            $alvo = Join-Path $PastaMotor ($a.arquivo -replace '/', '\')
+            if (-not (Test-Path -LiteralPath $alvo)) { throw "$($json.Name): arquivo nao encontrado: $alvo" }
+            foreach ($t in $a.trocas) {
+                if ([string]::IsNullOrEmpty($t.de) -or $t.de -ceq $t.para -or $t.ocorrencias -lt 1) { throw "$($json.Name): $($a.arquivo): troca invalida (de vazio, de igual a para ou ocorrencias < 1)." }
+            }
+            $achados += [pscustomobject]@{ Patch = $json.Name; Arquivo = $a.arquivo; Alvo = $alvo; Trocas = $a.trocas }
+        }
+    }
+    return $achados
+}
+# Planeja TUDO (sem gravar): se um trecho nao bater (motor de outra versao, arquivo ja' mexido por fora), lanca.
+function PlanejarTexto {
+    $planos = @()
+    foreach ($a in (ListarPatchesDeTexto)) {
+        $arq = LerTextoDoMotor $a.Alvo
+        $texto = $arq.Texto; $novo = $texto; $jaAplicado = $true
+        foreach ($t in $a.Trocas) {
+            $de = Contar $texto $t.de; $para = Contar $texto $t.para
+            if ($de -eq 0 -and $para -eq $t.ocorrencias) { continue }
+            if ($de -ne $t.ocorrencias -or $para -ne 0) { throw ("{0}: {1}: trecho 'de' {2}x (esperado {3}), 'para' {4}x (esperado 0). Nada gravado." -f $a.Patch, $a.Arquivo, $de, $t.ocorrencias, $para) }
+            $jaAplicado = $false
+            $novo = $novo.Replace($t.de, $t.para)
+        }
+        if (-not $jaAplicado) {
+            # Conferido ANTES de gravar: uma troca cujo "para" contem o "de" de outra (ou o inverso) daria um resultado que o
+            # criterio de "ja aplicado" nao reconheceria - recusa agora, com o motor intacto.
+            foreach ($t in $a.Trocas) {
+                if ((Contar $novo $t.de) -ne 0 -or (Contar $novo $t.para) -ne $t.ocorrencias) { throw ("{0}: {1}: o resultado das trocas nao fecha a contagem (trechos que se sobrepoem?). Nada gravado." -f $a.Patch, $a.Arquivo) }
+            }
+        }
+        $planos += [pscustomobject]@{ Patch = $a.Patch; Arquivo = $a.Arquivo; Alvo = $a.Alvo; Bom = $arq.Bom; Novo = $novo; JaAplicado = $jaAplicado; Trocas = $a.Trocas }
+    }
+    return $planos
+}
+function AplicarTexto($planos) {
+    foreach ($pl in $planos) {
+        if ($pl.JaAplicado) { Write-Host ("ja aplicado  {0}  {1}" -f $pl.Patch, $pl.Alvo); continue }
+        if (-not (Test-Path -LiteralPath "$($pl.Alvo).orig")) { Copy-Item -LiteralPath $pl.Alvo "$($pl.Alvo).orig" }
+        GravarTextoDoMotor $pl.Alvo $pl.Novo $pl.Bom
+        $relido = (LerTextoDoMotor $pl.Alvo).Texto
+        foreach ($t in $pl.Trocas) {
+            if ((Contar $relido $t.de) -ne 0 -or (Contar $relido $t.para) -ne $t.ocorrencias) { throw "Conferencia falhou em $($pl.Alvo) - restaure com -Reverter." }
+        }
+        Write-Host ("aplicado     {0}  {1}" -f $pl.Patch, $pl.Alvo)
+    }
+}
+function ReverterTexto {
+    # Planeja antes de gravar: o .orig tem de conter todos os "de" (e nenhum "para"); sem .orig, o arquivo tem de ja' ser o original.
+    $restaurar = @()
+    foreach ($a in (ListarPatchesDeTexto)) {
+        $orig = "$($a.Alvo).orig"
+        $alvoDaConferencia = if (Test-Path -LiteralPath $orig) { $orig } else { $a.Alvo }
+        $texto = (LerTextoDoMotor $alvoDaConferencia).Texto
+        foreach ($t in $a.Trocas) {
+            if ((Contar $texto $t.de) -ne $t.ocorrencias -or (Contar $texto $t.para) -ne 0) { throw "$($a.Patch): $alvoDaConferencia nao e' o original deste patch - nao vou reverter por cima. Nada gravado." }
+        }
+        $restaurar += [pscustomobject]@{ Alvo = $a.Alvo; Orig = $orig; TemOrig = (Test-Path -LiteralPath $orig); Patch = $a.Patch }
+    }
+    foreach ($r in $restaurar) {
+        if ($r.TemOrig) { Copy-Item -Force -LiteralPath $r.Orig $r.Alvo; Remove-Item -Force -LiteralPath $r.Orig; Write-Host ("revertido    {0}  {1}" -f $r.Patch, $r.Alvo) }
+        else { Write-Host ("ja original  {0}  {1}" -f $r.Patch, $r.Alvo) }
+    }
+}
+
 $bundles = $editores | ForEach-Object { Join-Path $PastaMotor "editors\sdkjs\$_\sdk-all.js" }
-foreach ($b in $bundles) { if (-not (Test-Path $b)) { throw "Bundle nao encontrado: $b" } }
+if (-not $SoPatchesDeTexto) { foreach ($b in $bundles) { if (-not (Test-Path $b)) { throw "Bundle nao encontrado: $b" } } }
 
 if ($Reverter) {
-    foreach ($b in $bundles) {
+    ReverterTexto
+    foreach ($b in $(if ($SoPatchesDeTexto) { @() } else { $bundles })) {
         $orig = "$b.orig"
         if (Test-Path $orig) {
             $c = Classificar ($latin1.GetString([IO.File]::ReadAllBytes($orig))) ""
@@ -106,6 +215,9 @@ if ($Reverter) {
     return
 }
 
+# Texto primeiro so' PLANEJA (nao grava): trecho que nao bate para tudo, inclusive o patch da fonte.
+$planosTexto = PlanejarTexto
+if (-not $SoPatchesDeTexto) {
 # Caminho absoluto UMA vez, resolvido contra o CWD do PowerShell: Test-Path usa esse CWD e [IO.File] usa o do
 # processo, que podem divergir — assim os dois olham o mesmo arquivo. (PastaMotor passa pelo mesmo caminho acima.)
 $Fonte = Absoluto $Fonte
@@ -155,3 +267,5 @@ foreach ($b in $bundles) {
     Write-Host ("aplicado   {0}`n           antes  {1}`n           depois {2}" -f $b, $antes, (Sha256Arquivo $b))
 }
 Write-Host ("Patch da fonte de simbolos: {0} bundle(s) alterado(s) agora, {1} ja' estavam. Motor {2}." -f $aplicados, ($bundles.Count - $aplicados), $versao)
+}
+AplicarTexto $planosTexto

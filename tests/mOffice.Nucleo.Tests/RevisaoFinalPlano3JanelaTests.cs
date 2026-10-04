@@ -86,7 +86,8 @@ public class RevisaoFinalPlano3JanelaTests
             }, TimeSpan.FromSeconds(180));
             Assert.False(Directory.Exists(semAlteracao));
 
-            // Controle 2: com alteracao, fechamento normal e "Nao salvar" (decisao informada) — a pasta sai.
+            // Controle 2: com alteracao, fechamento normal e "Nao salvar" (decisao informada) — a pasta SAI da recuperacao (Plano 6, Task 10: vai para
+            // os "Nao salvos recentemente", nunca fica listada como documento recuperado).
             JanelaSta.Executar(async () =>
             {
                 var j = EditorReal.NovaJanela("mtexto"); j.Show();   // a pergunta de teste responde NaoSalvar
@@ -95,9 +96,10 @@ public class RevisaoFinalPlano3JanelaTests
                 for (var i = 0; i < 50 && Directory.Exists(naoSalvar); i++) await Task.Delay(100);
             }, TimeSpan.FromSeconds(180));
             Assert.False(Directory.Exists(naoSalvar));
+            Assert.DoesNotContain(naoSalvar, Recuperaveis.Listar(SessaoDocumento.RaizRecovery, "mtexto").Select(d => d.Pasta));
             Assert.Equal(antes, File.ReadAllBytes(docx));
         }
-        finally { Limpar(recovery, semAlteracao, naoSalvar, pasta); }
+        finally { Limpar(recovery, semAlteracao, naoSalvar, pasta, string.IsNullOrEmpty(naoSalvar) ? "" : Path.Combine(Pastas.Descartados, Path.GetFileName(naoSalvar))); }
     }
 
     /// <summary>Abre o docx, edita e "cai" (fecha deixando a pasta, com a trava solta). Devolve a pasta de recuperacao.</summary>

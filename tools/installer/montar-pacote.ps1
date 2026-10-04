@@ -57,6 +57,8 @@ $ExesNaoEnxutos = @('copilotapp.exe', 'mscopilot.exe', 'platform_experiences_hel
     'notification_helper.exe', 'elevated_tracing_service.exe', 'copilot_setup.exe')
 
 function Copiar-Arvore([string]$De, [string]$Para, [string[]]$ExcluirPastas = @(), [string[]]$ExcluirArquivos = @()) {
+    # *.orig: copias do ORIGINAL que o aplicar-patches.ps1 deixa ao lado dos arquivos patcheados (o sdk-all.js.orig tem a fonte ASCW3 da Ascensio que o patch da fonte tira). Nunca vao para o pacote.
+    $ExcluirArquivos = @('*.orig') + $ExcluirArquivos
     if (-not (Test-Path $De)) { throw "Origem nao encontrada: $De" }
     $argumentos = @($De, $Para, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NP', '/R:1', '/W:1')
     if ($ExcluirPastas.Count -gt 0) { $argumentos += '/XD'; $argumentos += $ExcluirPastas }
@@ -144,6 +146,8 @@ try {
     Get-ChildItem -LiteralPath (Join-Path $Saida 'Ponte') -Filter 'ponte-teste.*' | Remove-Item -Force
     if (Get-ChildItem -LiteralPath $Saida -Recurse -Filter 'ponte-teste.*') { throw "ponte-teste.* ainda no pacote." }
     if (-not (Test-Path (Join-Path $Saida 'Ponte\ponte-desktop.js'))) { throw "Ponte\ponte-desktop.js ausente no pacote." }
+    # Modelos vazios proprios do mOffice (Plano 6, Task 9: Calibri 11, layouts do PowerPoint pt-BR): ModelosVazios os procura ao lado do exe.
+    foreach ($m in @('new.docx', 'new.xlsx', 'new.pptx')) { if (-not (Test-Path (Join-Path $Saida "Modelos\pt-BR\$m"))) { throw "Modelos\pt-BR\$m ausente no pacote." } }
     Write-Host ("  OK: {0} arquivos distintos no pacote dos apps, {1} copias identicas entre os apps descartadas, 0 conflitos." -f $vistos.Count, $iguais) -ForegroundColor Green
 
     # -----------------------------------------------------------------------------------------------------
@@ -175,7 +179,7 @@ try {
         if (-not (Test-Path (Join-Path $Motor $obrigatorio))) { throw "Motor incompleto: falta motor\$obrigatorio" }
     }
     if (Test-Path (Join-Path $Motor 'editors\sdkjs-plugins')) { throw "sdkjs-plugins nao deveria estar no pacote." }
-    $proibidos = @(Get-ChildItem -LiteralPath $Saida -Recurse -File -Force | Where-Object { $_.Name -ieq 'ASC.ttf' -or $_.Name -ieq 'AllFonts.js' })
+    $proibidos = @(Get-ChildItem -LiteralPath $Saida -Recurse -File -Force | Where-Object { $_.Name -ieq 'ASC.ttf' -or $_.Name -ieq 'AllFonts.js' -or $_.Name -like '*.orig' })
     if ($proibidos.Count -gt 0) { throw ("Arquivo que nao pode ir no pacote: " + ($proibidos.FullName -join ', ')) }
     $dicts = @(Get-ChildItem -LiteralPath (Join-Path $Motor 'dictionaries') -Directory | ForEach-Object Name)
     if ($dicts.Count -ne $Dicionarios.Count) { throw "Dicionarios inesperados: $($dicts -join ', ')" }

@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using mOffice.Conversor;
 
 namespace mOffice.Nucleo;
 
@@ -29,7 +30,7 @@ public sealed class PonteDesktop
     private readonly Func<string, string?>? _ortografia;
     private readonly Action<string>? _aoFalharGravacao;
     private readonly object _trava = new();
-    // Arquivos que o USUARIO escolheu num dialogo do host (ver JanelaEditor.ResponderDialogoImagemAsync) e
+    // Arquivos que o USUARIO escolheu num dialogo do host (ver JanelaEditor.ResponderDialogoArquivoAsync) e
     // que, por isso, a pagina pode mandar copiar para media/. Mesma defesa do app oficial, onde
     // `g_pLocalResolver->AddFile(sPath)` registra o caminho escolhido e `GetLocalImageUrl` chama
     // `g_pLocalResolver->Check(sUrlFile)` antes de ler qualquer arquivo do disco.
@@ -120,6 +121,234 @@ public sealed class PonteDesktop
     {
         if (string.IsNullOrWhiteSpace(caminho)) return;
         lock (_trava) _escolhidosPeloUsuario.Add(Path.GetFullPath(caminho));
+    }
+
+    // -----------------------------------------------------------------------------------------------------
+    // Conversao e leitura de arquivo pedidas pelo editor (Plano 6, Task 8). Mesma defesa do PermitirArquivoEscolhido:
+    // o caminho so' e' convertido/lido se o USUARIO o escolheu num dialogo do host com o filtro que da' esse uso
+    // (FiltrosDoEditor: "word"/"cell"/"(*.xml)" -> conversao, "csv/txt" -> leitura), e o consentimento vale UM uso.
+    // -----------------------------------------------------------------------------------------------------
+    private readonly HashSet<string> _conversaoPermitida = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _leituraPermitida = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Usos de <see cref="PedirConversao"/>: "converter" (<c>convertFile</c>), "comparar" e "combinar" (<c>CompareDocumentFile</c>/<c>MergeDocumentFile</c>).</summary>
+    internal static readonly IReadOnlySet<string> UsosDeConversao = new HashSet<string>(StringComparer.Ordinal) { "converter", "comparar", "combinar" };
+
+    /// <summary>Canvas de planilha (AVS_OFFICESTUDIO_FILE_CANVAS_SPREADSHEET): o que o sdkjs pede para atualizar um vinculo externo.</summary>
+    internal const int CanvasPlanilha = 8194;
+
+    /// <summary>Autoriza UMA conversao deste caminho (so' o host chama — `internal` pelo mesmo motivo de <see cref="PermitirArquivoEscolhido"/>;
+    /// o brief pedia `public`, o que daria a' pagina um "autorize este caminho").</summary>
+    internal void PermitirConversao(string caminho)
+    {
+        if (string.IsNullOrWhiteSpace(caminho)) return;
+        lock (_trava) _conversaoPermitida.Add(Path.GetFullPath(caminho));
+    }
+
+    /// <summary>Autoriza UMA leitura deste caminho (ver <see cref="PermitirConversao"/>).</summary>
+    internal void PermitirLeitura(string caminho)
+    {
+        if (string.IsNullOrWhiteSpace(caminho)) return;
+        lock (_trava) _leituraPermitida.Add(Path.GetFullPath(caminho));
+    }
+
+    /// <summary>
+    /// <c>convertFile</c>/<c>CompareDocumentFile</c>/<c>MergeDocumentFile</c> do editor: devolve o id do pedido (o host converte FORA desta chamada
+    /// sincrona e entrega por <c>window.__moffice.entregarConversao</c> ou <c>onDocumentCompare</c>/<c>onDocumentMerge</c>), ou <c>""</c> se recusado.
+    /// Aceita o caminho consentido por <see cref="PermitirConversao"/> (dialogo do host; consumido aqui) e o VINCULO EXTERNO de planilha
+    /// (<paramref name="uso"/> "converter", <paramref name="formato"/> 8194): este e' um caminho que o DOCUMENTO cita (fix 1 da revisao da Task 8,
+    /// seguranca) e por isso so' vira pedido com <c>confirmar</c> — o host pergunta ao usuario (caminho completo, padrao Nao) ANTES de qualquer
+    /// E/S no caminho, e a decisao fica guardada por caminho na sessao (<see cref="RegistrarDecisaoDeVinculo"/>). O "Atualizar" do proprio editor
+    /// NAO conta como consentimento. Caminho de dispositivo/namespace ou nao totalmente qualificado: recusado antes de qualquer GetFullPath/
+    /// File.Exists, com faixa (<see cref="CaminhoBruto"/>).
+    /// </summary>
+    public string PedirConversao(string caminho, int formato, string uso)
+    {
+        uso ??= "";
+        if (!UsosDeConversao.Contains(uso)) { _log?.Invoke("CONVERSAO recusada (uso desconhecido: " + Cortar(uso) + ")"); return ""; }
+        var vinculo = uso == "converter" && formato == CanvasPlanilha;
+        // Fix 1b: vinculo relativo (o Excel grava "custos.xlsx", "..\pasta\custos.xlsx") resolvido pela pasta do original salvo — so' texto.
+        if (vinculo) caminho = ResolverRelativo(caminho, PastaDoDocumento) ?? "";
+        var bruto = CaminhoBruto(caminho);
+        if (bruto is null)
+        {
+            _log?.Invoke("CONVERSAO recusada (caminho de dispositivo, relativo ou ilegivel; nenhuma E/S): " + Cortar(caminho ?? ""));
+            if (vinculo) _aviso?.Invoke("vinculoRecusado", caminho ?? "");
+            return "";
+        }
+        var completo = Consumir(_conversaoPermitida, bruto);
+        var confirmar = false;
+        if (completo is null && vinculo)
+        {
+            completo = VinculoPermitido(caminho, out confirmar);
+            if (completo is null) return "";
+        }
+        if (completo is null) { _log?.Invoke("CONVERSAO recusada (nao veio do dialogo do host): " + Cortar(caminho ?? "")); return ""; }
+        var id = Guid.NewGuid().ToString("N");
+        EmitirPedido("converterArquivo", id, JsonSerializer.Serialize(new { id, caminho = completo, formato, uso, confirmar }));
+        return id;
+    }
+
+    /// <summary><c>loadLocalFile</c> (Dados &gt; De texto/CSV): id do pedido (os bytes chegam por <c>window.__moffice.entregarLeitura</c>) ou <c>""</c>
+    /// se o caminho nao foi consentido por <see cref="PermitirLeitura"/>. Consome o consentimento.</summary>
+    public string PedirLeitura(string caminho)
+    {
+        var bruto = CaminhoBruto(caminho);
+        var completo = bruto is null ? null : Consumir(_leituraPermitida, bruto);
+        if (completo is null) { _log?.Invoke("LEITURA recusada (nao veio do dialogo do host): " + Cortar(caminho ?? "")); return ""; }
+        var id = Guid.NewGuid().ToString("N");
+        EmitirPedido("lerArquivo", id, JsonSerializer.Serialize(new { id, caminho = completo }));
+        return id;
+    }
+
+    /// <summary><c>close()</c> do objeto de conversao: o host apaga a pasta da conversao.</summary>
+    public void LiberarConversao(string id) => _aviso?.Invoke("liberarConversao", id ?? "");
+
+    /// <summary>
+    /// <c>openExternalReference(ref, cb)</c> (vinculo externo -&gt; "Abrir origem"). MEDIDO em cell/sdk-all-min.js 9.4.0.129: <c>ref</c> e' o caminho do
+    /// vinculo sem o "file:///" (<c>AscCommon.o$j</c>) e o callback trata 0 como "nao abriu" (o aviso do proprio sdkjs) e qualquer outro valor como
+    /// sucesso. Devolve o id do pedido (o host pergunta se preciso, confere a existencia DEPOIS do sim, pede a abertura em janela nova a' casca e
+    /// responde por <c>window.__moffice.entregarReferencia(id, 0|1)</c>) ou <c>""</c> (recusado: o JS responde 0). Mesmas regras do vinculo de
+    /// <see cref="PedirConversao"/>.
+    /// </summary>
+    public string AbrirReferenciaExterna(string referencia)
+    {
+        var original = referencia;
+        referencia = ResolverRelativo(referencia, PastaDoDocumento) ?? "";
+        if (CaminhoBruto(referencia) is null)
+        {
+            _log?.Invoke("VINCULO recusado (caminho de dispositivo, relativo ou ilegivel; nenhuma E/S): " + Cortar(original ?? ""));
+            _aviso?.Invoke("vinculoRecusado", original ?? "");
+            return "";
+        }
+        var completo = VinculoPermitido(referencia, out var confirmar);
+        if (completo is null) return "";
+        var id = Guid.NewGuid().ToString("N");
+        EmitirPedido("abrirReferenciaExterna", id, JsonSerializer.Serialize(new { id, caminho = completo, confirmar }));
+        return id;
+    }
+
+    // Decisoes do usuario sobre caminhos de vinculo, por caminho EXATO normalizado, valendo para esta sessao (esta ponte e' por sessao).
+    private readonly Dictionary<string, bool> _decisoesDeVinculo = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Guarda a resposta do usuario para este caminho de vinculo (so' o host chama: `internal` — publico seria a pagina se autorizando).</summary>
+    internal void RegistrarDecisaoDeVinculo(string caminho, bool permitir)
+    {
+        var chave = CaminhoDeVinculo(caminho) ?? caminho;
+        lock (_trava) _decisoesDeVinculo[chave] = permitir;
+    }
+
+    /// <summary>Resposta ja' dada pelo usuario para este caminho nesta sessao, ou <c>null</c>.</summary>
+    internal bool? DecisaoDeVinculo(string caminho)
+    {
+        var chave = CaminhoDeVinculo(caminho) ?? caminho;
+        lock (_trava) return _decisoesDeVinculo.TryGetValue(chave, out var d) ? d : null;
+    }
+
+    /// <summary>Caminho do vinculo se ele PODE virar pedido (planilha, nao negada nesta sessao), com <paramref name="confirmar"/> = o usuario ainda
+    /// nao respondeu para ele; <c>null</c> = recusado (so' log). Nenhuma E/S.</summary>
+    private string? VinculoPermitido(string? referencia, out bool confirmar)
+    {
+        confirmar = false;
+        var completo = CaminhoDeVinculo(referencia);
+        if (completo is null) { _log?.Invoke("VINCULO recusado (nao e' planilha que o mOffice abre): " + Cortar(referencia ?? "")); return null; }
+        var decisao = DecisaoDeVinculo(completo);
+        if (decisao == false) { _log?.Invoke("VINCULO recusado (o usuario ja' negou nesta sessao): " + completo); return null; }
+        confirmar = decisao is null;
+        return completo;
+    }
+
+    /// <summary>
+    /// O caminho LOCAL de <paramref name="referencia"/> (a forma <c>file:</c> vira caminho), ou <c>null</c> quando ele nao pode nem ser considerado:
+    /// vazio, URI ilegivel, URL que nao e' <c>file:</c>, caminho de DISPOSITIVO/namespace do Windows (<c>\\?\</c>, <c>\\.\</c>, <c>\??\</c> e as
+    /// grafias com <c>/</c>) ou nao totalmente qualificado (relativo, <c>C:x</c>, <c>\x</c>). So' manipulacao de texto: nenhuma chamada ao sistema de
+    /// arquivos (fix 1 da revisao da Task 8). `internal static`: testavel e fora da superficie COM.
+    /// </summary>
+    internal static string? CaminhoBruto(string? referencia)
+    {
+        if (string.IsNullOrWhiteSpace(referencia)) return null;
+        var bruto = referencia;
+        // '?' e '*' nunca fazem parte de um caminho de arquivo do Windows (nem de um file: sem consulta): fora ja' na grafia original, antes de
+        // qualquer interpretacao como URI (o Uri do .NET reescreve "file:////?/C:/..." de formas que nao devem decidir nada aqui).
+        if (EhDispositivo(bruto) || bruto.IndexOfAny(['?', '*']) >= 0) return null;
+        if (bruto.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Uri.TryCreate(bruto, UriKind.Absolute, out var uri) || !uri.IsFile) return null;
+            try { bruto = uri.LocalPath; } catch (InvalidOperationException) { return null; }
+            if (uri.IsUnc && (uri.Host is "." or "?" || uri.Host.Length == 0)) return null;
+        }
+        else if (bruto.Contains("://", StringComparison.Ordinal)) return null;
+        // '?' e '*' nunca fazem parte de um nome de arquivo do Windows: qualquer grafia com eles (ex. a forma file: de um caminho \\?\) sai aqui.
+        if (EhDispositivo(bruto) || bruto.IndexOfAny(Path.GetInvalidPathChars()) >= 0 || bruto.IndexOfAny(['?', '*']) >= 0) return null;
+        return Path.IsPathFullyQualified(bruto) ? bruto : null;
+    }
+
+    /// <summary>Pasta do arquivo ORIGINAL salvo desta sessao (base dos vinculos relativos), ou <c>null</c> em documento novo / sem pasta qualificada.</summary>
+    private string? PastaDoDocumento
+    {
+        get
+        {
+            if (_s.Novo) return null;
+            try { var p = Path.GetDirectoryName(_s.ArquivoOrigem); return !string.IsNullOrEmpty(p) && Path.IsPathFullyQualified(p) ? p : null; }
+            catch (Exception e) when (e is ArgumentException or PathTooLongException) { return null; }
+        }
+    }
+
+    /// <summary>
+    /// Fix 1b da revisao da Task 8: vinculo RELATIVO (o Excel guarda os vinculos relativos a' pasta de trabalho: <c>custos.xlsx</c>,
+    /// <c>..\pasta\custos.xlsx</c>) vira caminho completo pela pasta do documento (<see cref="Path.Combine(string, string)"/> +
+    /// <see cref="Path.GetFullPath(string)"/>: so' texto, nenhuma E/S). <c>..</c> que sobe acima do compartilhamento so' resolve — o usuario ve' o caminho
+    /// real na pergunta do host. Devolve a referencia como veio quando ela nao e' relativa (URI, dispositivo, <c>?</c>/<c>*</c>, qualificada ou
+    /// enraizada pela metade como <c>\x</c>/<c>C:x</c>: quem decide e' <see cref="CaminhoBruto"/>) ou quando nao ha' pasta (documento novo: o relativo
+    /// continua relativo e e' recusado). <c>null</c> = nao resolveu. O resultado passa pelas mesmas regras (dispositivo inclusive).
+    /// </summary>
+    internal static string? ResolverRelativo(string? referencia, string? pastaDoDocumento)
+    {
+        if (string.IsNullOrWhiteSpace(referencia)) return referencia;
+        if (referencia.StartsWith("file:", StringComparison.OrdinalIgnoreCase) || referencia.Contains("://", StringComparison.Ordinal)
+            || EhDispositivo(referencia) || referencia.IndexOfAny(['?', '*']) >= 0 || referencia.IndexOfAny(Path.GetInvalidPathChars()) >= 0
+            || Path.IsPathRooted(referencia))
+            return referencia;
+        if (pastaDoDocumento is null || !Path.IsPathFullyQualified(pastaDoDocumento)) return referencia;
+        try { return Path.GetFullPath(Path.Combine(pastaDoDocumento, referencia)); }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
+    }
+
+    private static bool EhDispositivo(string s)
+    {
+        var t = s.TrimStart().Replace('/', '\\');
+        return t.StartsWith(@"\\?\", StringComparison.Ordinal) || t.StartsWith(@"\\.\", StringComparison.Ordinal) || t.StartsWith(@"\??\", StringComparison.Ordinal)
+            || t.Equals(@"\\?", StringComparison.Ordinal) || t.Equals(@"\\.", StringComparison.Ordinal);
+    }
+
+    /// <summary>Caminho NORMALIZADO (completo, como aparece na pergunta ao usuario) de um vinculo de planilha que o mOffice abre, ou <c>null</c>.
+    /// <see cref="Path.GetFullPath(string)"/> aqui so' resolve <c>..</c>/barras de um caminho JA' totalmente qualificado (sem E/S); a existencia do
+    /// arquivo so' e' vista pelo host DEPOIS de o usuario permitir.</summary>
+    internal static string? CaminhoDeVinculo(string? referencia)
+    {
+        var bruto = CaminhoBruto(referencia);
+        if (bruto is null) return null;
+        try
+        {
+            var completo = Path.GetFullPath(bruto);
+            if (EhDispositivo(completo)) return null;
+            return TabelaFormatos.DaExtensao(completo) is { Abre: true, DocType: "cell" } ? completo : null;
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
+    }
+
+    private string? Consumir(HashSet<string> conjunto, string? caminho)
+    {
+        if (string.IsNullOrWhiteSpace(caminho)) return null;
+        string completo;
+        try { completo = Path.GetFullPath(caminho); }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
+        lock (_trava)
+        {
+            if (!conjunto.Contains(completo) || !File.Exists(completo)) return null;
+            conjunto.Remove(completo);
+            return completo;
+        }
     }
 
     /// <summary>Pasta temporaria do Windows, onde o Word grava as figuras de uma copia (<c>%TEMP%\msohtmlclip1\01\
@@ -228,10 +457,38 @@ public sealed class PonteDesktop
         return longo;
     }
 
+    /// <summary>O caminho que o editor le' em <c>LocalFileGetSourcePath</c>. Plano 6, Task 2 — MEDIDO ao vivo: o web-apps reconhece a
+    /// apresentacao de slides pela extensao deste caminho e INICIA a apresentacao sozinho ao abrir um <c>.ppsx</c>/<c>.ppsm</c> (o
+    /// Editor.bin de um .ppsx e' identico ao do mesmo conteudo em .pptx). Quem abre para EDICAO (Abrir comum) nao pode ver isso; quem
+    /// quer apresentar pede pela ponte (<c>iniciarApresentacao</c>). So' o editor ve' o irmao (.pptx/.pptm): o salvar do host usa
+    /// sempre <see cref="SessaoDocumento.ArquivoOrigem"/>, que continua o arquivo real.</summary>
+    ///
+    /// <para>Documento NOVO (I1 da revisao final do Plano 6, A10): a origem da sessao e' a copia do modelo dentro da recovery
+    /// (<c>new.docx</c>, ou o nome do modelo), e o sdkjs tira DESTE caminho o nome interno do documento (word <c>Z$</c>: nome do arquivo COM
+    /// extensao -> <c>asc_getDocumentName</c>), que o web-apps poe no cabecalho a cada fim de acao longa — o cabecalho virava "new.docx" depois da
+    /// 1a edicao. O editor ve' <c>&lt;pasta da copia&gt;\&lt;Titulo&gt;</c> SEM extensao: MEDIDO ao vivo, com "Documento1.docx" o cabecalho virava
+    /// "Documento1.docx"; o Word mostra documento nao salvo sem extensao ("Documento1"). Esse caminho nao existe e nunca e' usado para E/S: o host
+    /// so' le'/grava pela <see cref="SessaoDocumento.ArquivoOrigem"/>, a ponte esconde "Abrir local do arquivo" em documento novo
+    /// (<c>&amp;arquivo=0</c>) e o vinculo relativo nao resolve em documento novo (<c>PastaDoDocumento</c> = null).</para></summary>
+    internal static string OrigemParaOEditor(SessaoDocumento s)
+    {
+        if (s.Novo)
+        {
+            try { return Path.Combine(Path.GetDirectoryName(s.ArquivoOrigem) ?? "", s.Titulo); }
+            catch (ArgumentException) { }
+        }
+        return s.Formato switch
+        {
+            FormatoDocumento.Ppsx => Path.ChangeExtension(s.ArquivoOrigem, ".pptx"),
+            FormatoDocumento.Ppsm => Path.ChangeExtension(s.ArquivoOrigem, ".pptm"),
+            _ => s.ArquivoOrigem,
+        };
+    }
+
     /// <summary>Estado que o JS le' uma vez, na carga do documento (as funcoes sincronas da ponte respondem dele).</summary>
     public string SessaoJson() => JsonSerializer.Serialize(new
     {
-        origem = _s.ArquivoOrigem,
+        origem = OrigemParaOEditor(_s),
         formato = (int)_s.Formato,
         recovery = _s.PastaRecovery.Replace('\\', '/'),
         titulo = _s.Titulo,
@@ -243,8 +500,47 @@ public sealed class PonteDesktop
         changesAbertos = _s.ChangesAbertos,
     });
 
-    /// <summary>Unico caminho JS -> C#. <c>tipo</c>: "localStartOpen" | "localFileSave" (Task 6) | "erro".</summary>
-    public void Avisar(string tipo, string param) => _aviso?.Invoke(tipo ?? "", param ?? "");
+    /// <summary>
+    /// Tipos de aviso que SO' a propria ponte emite (pelo <c>_aviso</c> interno), depois de conferir o consentimento: <see cref="PedirConversao"/>,
+    /// <see cref="PedirLeitura"/>, <see cref="AbrirReferenciaExterna"/> e <see cref="LiberarConversao"/>. Revisao final do Plano 6, C1 (seguranca): o
+    /// host trata esses pedidos confiando no parametro (caminho, <c>confirmar</c>), entao <see cref="Avisar"/> — publico, chamavel por qualquer
+    /// script da pagina — os RECUSA. Todos os outros tipos sao os que o <c>ponte-desktop.js</c> manda (a lista dele e' conferida contra esta em
+    /// <c>PonteAvisosReservadosTests</c>).
+    /// </summary>
+    internal static readonly IReadOnlySet<string> TiposSoDoHost = new HashSet<string>(StringComparer.Ordinal)
+        { "converterArquivo", "lerArquivo", "abrirReferenciaExterna", "vinculoRecusado", "liberarConversao" };
+
+    /// <summary>Unico caminho JS -> C#. Os tipos de <see cref="TiposSoDoHost"/> sao recusados aqui (so' a ponte os emite, pelo canal interno).</summary>
+    public void Avisar(string tipo, string param)
+    {
+        tipo ??= "";
+        if (TiposSoDoHost.Contains(tipo)) { _log?.Invoke("PONTE aviso reservado ao host recusado: " + tipo); return; }
+        _aviso?.Invoke(tipo, param ?? "");
+    }
+
+    // Pedidos emitidos por esta ponte (id -> tipo + parametro exato entregue ao host). Segunda camada do C1: o host so' executa um pedido cujo id
+    // esta' aqui, e usa o parametro GUARDADO (caminho normalizado, formato, uso, confirmar), nunca o que chegou junto com o id.
+    private readonly Dictionary<string, (string Tipo, string Param)> _pedidosEmitidos = new(StringComparer.Ordinal);
+
+    /// <summary>Entrega um pedido ao host registrando o id (ver <see cref="ConsumirPedidoEmitido"/>).</summary>
+    private void EmitirPedido(string tipo, string id, string param)
+    {
+        lock (_trava) _pedidosEmitidos[id] = (tipo, param);
+        _aviso?.Invoke(tipo, param);
+    }
+
+    /// <summary>O parametro que esta ponte emitiu para (<paramref name="tipo"/>, <paramref name="id"/>), ou <c>null</c> (id forjado, de outro tipo
+    /// ou ja' usado). Um uso so'. `internal`: so' o host consome.</summary>
+    internal string? ConsumirPedidoEmitido(string tipo, string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        lock (_trava)
+        {
+            if (!_pedidosEmitidos.TryGetValue(id, out var p) || p.Tipo != tipo) return null;
+            _pedidosEmitidos.Remove(id);
+            return p.Param;
+        }
+    }
 
     /// <summary>
     /// Semantica (achado 2 da revisao 2026-09-17, espelha o desktop-sdk oficial):

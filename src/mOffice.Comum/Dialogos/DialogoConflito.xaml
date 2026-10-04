@@ -1,0 +1,55 @@
+<Window x:Class="mOffice.Comum.Dialogos.DialogoConflito"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:mOffice.Comum.Icones"
+        Width="490" SizeToContent="Height" WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False" ResizeMode="NoResize" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" FontFamily="{DynamicResource Fonte.Inter}">
+    <!-- Plano 6, Task 5: as duas perguntas da trava de arquivo, no estilo do DialogoFechar. Conflito ao salvar: Salvar uma cópia
+         (padrao) / Substituir / Cancelar. Arquivo em uso ao abrir: Somente leitura / Cancelar (o botao do meio some). Os Content dos
+         botoes sao STRINGS simples de proposito (e' assim que o teste os identifica). -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/mOffice.Comum;component/Temas/mOfficeTema.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Border Style="{StaticResource mOffice.Dialog.Superficie}" Margin="16">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Background="Transparent" BorderBrush="{DynamicResource Cor.BordaSutil}"
+                    BorderThickness="0,0,0,1" Padding="22,18" MouseLeftButtonDown="Cabecalho_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource mOffice.Dialog.IconeHeader}">
+                        <TextBlock FontFamily="{DynamicResource Fonte.PhosphorFill}" FontSize="17" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" Text="{icons:PhosphorIcon file-text}"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="11,0,0,0">
+                        <TextBlock x:Name="TituloTexto" Style="{StaticResource mOffice.Dialog.Titulo}"/>
+                        <TextBlock x:Name="NomeAppTexto" Style="{StaticResource mOffice.Dialog.Subtitulo}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border DockPanel.Dock="Bottom" Background="{DynamicResource Cor.FundoDialogoRodape}"
+                    BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,13,13" Padding="22,16">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BotaoPrincipal" Click="Principal_Click" Margin="0,0,8,0" IsDefault="True"
+                            Style="{StaticResource mOffice.Button.DialogPrimario}"/>
+                    <Button x:Name="BotaoSubstituir" Content="Substituir" Click="Substituir_Click" Margin="0,0,8,0"
+                            Style="{StaticResource mOffice.Button.DialogNeutro}"/>
+                    <!-- Cancelar NAO tem Click: o resultado ja' nasce Cancelar, e IsCancel faz o Esc e o clique fecharem pelo Window. -->
+                    <Button x:Name="BotaoCancelar" Content="Cancelar" IsCancel="True"
+                            Style="{StaticResource mOffice.Button.DialogCancelar}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Altura limitada com rolagem: um endereco (link do documento) pode ser enorme. -->
+            <ScrollViewer Margin="24,22" MaxHeight="220" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <TextBlock x:Name="PerguntaTexto" TextWrapping="Wrap" FontSize="12.5" LineHeight="19"
+                           Foreground="{DynamicResource Cor.TextoPrimario}"/>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</Window>

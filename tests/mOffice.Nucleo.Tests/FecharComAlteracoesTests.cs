@@ -1,5 +1,6 @@
 using mOffice.Conversor;
 using mOffice.Conversor.Tests;
+using mOffice.Nucleo.Recuperacao;
 
 namespace mOffice.Nucleo.Tests;
 
@@ -317,5 +318,91 @@ public class FecharComAlteracoesTests
             Assert.False(j.IsVisible);
             Assert.Equal(2, abortos);
         }, TimeSpan.FromSeconds(180));
+    }
+
+    /// <summary>Abre um .docx, edita, descarrega os changes no disco (a pasta vira recuperavel) e fecha com a decisao dada. Devolve a pasta de recuperacao.</summary>
+    private static string EditarEFechar(DecisaoFechar decisao, Action<JanelaEditor>? antesDeFechar = null)
+    {
+        var pasta = Path.Combine(Path.GetTempPath(), "mOffice-testes", Guid.NewGuid().ToString("N")); Directory.CreateDirectory(pasta);
+        var doc = FabricaDocumentos.Docx(pasta, "abc");
+        var recovery = "";
+        JanelaSta.Executar(async () =>
+        {
+            var j = Abrir(_ => Task.FromResult(decisao));
+            await j.AbrirAsync(doc);
+            Assert.Equal("true", await EditorReal.Esperar(j, EditorReal.ProntoNoEditor, "true", 150));
+            recovery = j.SessaoAtual!.PastaRecovery;
+            await j.ExecutarJsAsync(EditorReal.InserirTextoWord("nao salvo"));
+            Assert.Equal("true", await EditorReal.Esperar(j, EditorReal.EspelhoModificado, "true", 50));
+            await j.DescarregarChangesAsync();
+            antesDeFechar?.Invoke(j);
+            j.Close();
+            for (var i = 0; i < 100 && j.IsVisible; i++) await Task.Delay(100);
+            Assert.False(j.IsVisible);
+        }, TimeSpan.FromSeconds(180));
+        return recovery;
+    }
+
+    [SkippableFact] // Plano 6, Task 10 (SO-11): "Nao salvar" nao apaga na hora — a pasta vai para os descartados (4 dias) e continua recuperavel
+    public void NaoSalvar_GuardaNosDescartados()
+    {
+        EditorReal.PularSeNaoDaParaAbrirJanela();
+        var recovery = EditarEFechar(DecisaoFechar.NaoSalvar);
+        Assert.False(Directory.Exists(recovery));
+        var guardada = Path.Combine(Pastas.Descartados, Path.GetFileName(recovery));
+        Assert.True(Directory.Exists(guardada), "a pasta deveria estar nos descartados");
+        Assert.True(File.Exists(Path.Combine(guardada, "Editor.bin")));
+        Assert.Contains(Recuperaveis.Listar(Pastas.Descartados, "mtexto"), d => string.Equals(d.Pasta, guardada, StringComparison.OrdinalIgnoreCase));
+        Recuperaveis.Descartar(guardada); // limpeza do teste
+    }
+
+    [SkippableFact] // documento aberto com senha: "Nao salvar" apaga na hora (o Editor.bin decifrado nao fica 4 dias em claro no disco)
+    public void NaoSalvar_DocumentoProtegido_ApagaNaHora()
+    {
+        EditorReal.PularSeNaoDaParaAbrirJanela();
+        var recovery = EditarEFechar(DecisaoFechar.NaoSalvar, j => j.SessaoAtual!.Senha = "segredo");
+        Assert.False(Directory.Exists(recovery));
+        Assert.False(Directory.Exists(Path.Combine(Pastas.Descartados, Path.GetFileName(recovery))), "documento protegido nao pode ser guardado em claro");
+    }
+
+    [SkippableTheory] // as TRES formas de "protegido" apagam na hora: senha em memoria, sessao.json Protegido e original cifrado sem senha
+    [InlineData("senha")]
+    [InlineData("metadados")]
+    [InlineData("original")]
+    public void NaoSalvar_QualquerFormaDeProtegido_ApagaNaHora(string forma)
+    {
+        EditorReal.PularSeNaoDaParaAbrirJanela();
+        var recovery = EditarEFechar(DecisaoFechar.NaoSalvar, j =>
+        {
+            var s = j.SessaoAtual!;
+            if (forma == "senha") s.Senha = "segredo";
+            else if (forma == "metadados") s.Metadados = s.Metadados! with { Protegido = true };
+            else s.OriginalProtegidoSemSenha = s.ArquivoOrigem;
+        });
+        Assert.False(Directory.Exists(recovery));
+        Assert.False(Directory.Exists(Path.Combine(Pastas.Descartados, Path.GetFileName(recovery))), $"protegido ({forma}) nao pode ser guardado em claro");
+    }
+
+    [SkippableFact] // IMPORTANT 1 (backlog 56): reabrir dos "Nao salvos" devolve a pasta para a recuperacao; uma queda depois a deixa listada como "Documentos recuperados"
+    public void ReabrirDosNaoSalvos_VoltaParaRecuperacao_EQuedaFicaRecuperavel()
+    {
+        EditorReal.PularSeNaoDaParaAbrirJanela();
+        var recovery = EditarEFechar(DecisaoFechar.NaoSalvar);
+        var nome = Path.GetFileName(recovery);
+        var guardada = Path.Combine(Pastas.Descartados, nome);
+        Assert.True(Directory.Exists(guardada));
+        var volta = Path.Combine(Pastas.Recuperacao, nome);
+        JanelaSta.Executar(async () =>
+        {
+            var j = EditorReal.NovaJanela("mtexto"); j.ManterRecoveryAoFecharParaTeste = true; j.Show();
+            await j.RecuperarAsync(guardada);
+            Assert.Equal("true", await EditorReal.Esperar(j, EditorReal.ProntoNoEditor, "true", 300));
+            Assert.Equal(volta, j.SessaoAtual!.PastaRecovery, ignoreCase: true);
+            j.Close();   // "queda": fecha mantendo a pasta
+        }, TimeSpan.FromSeconds(180));
+        Assert.False(Directory.Exists(guardada), "a pasta nao pode ficar sob a varredura de 4 dias");
+        Assert.False(File.Exists(Path.Combine(volta, Descartados.NomeMarca)));
+        Assert.Contains(Recuperaveis.Listar(Pastas.Recuperacao, "mtexto"), d => string.Equals(d.Pasta, volta, StringComparison.OrdinalIgnoreCase));
+        Recuperaveis.Descartar(volta);
     }
 }

@@ -18,6 +18,31 @@
   if (estado.sessao === undefined) estado.sessao = null;
   if (estado.indice === undefined) estado.indice = 0;
 
+  // Configuracao do editor vinda do host (Plano 6, Task 6; patch 01 no index.html): mescla PROFUNDA de
+  // window.__moffice.configEditor (ConfigEditor.Json() do host) no editorConfig que o motor monta. Os campos da URL (usuario,
+  // idioma, tema) continuam do index.html; aqui so' entra o que o host decide (region, ajuda/feedback/macros/dicas desligados).
+  // "arquivo=0" na URL (documento novo/desvinculado, sem arquivo em disco) tira o "Abrir Local do Arquivo": goback sem url
+  // faz canBack falso no app.js (canBack = !isEmpty(goback.url)). Sem arquivo=, nada muda.
+  estado.mesclarConfig = function (c) {
+    function mesclar(destino, origem) {
+      for (var k in origem) {
+        if (!Object.prototype.hasOwnProperty.call(origem, k)) continue;
+        var v = origem[k];
+        if (v && typeof v === "object" && !Array.isArray(v) && destino[k] && typeof destino[k] === "object") mesclar(destino[k], v);
+        else destino[k] = v;
+      }
+      return destino;
+    }
+    try {
+      if (estado.configEditor) mesclar(c, JSON.parse(JSON.stringify(estado.configEditor)));
+      if (/[?&]arquivo=0(&|$)/.test(location.search)) {
+        c.customization = c.customization || {};
+        c.customization.goback = { url: "" };
+      }
+    } catch (e) { logar("mesclarConfig: " + e); }
+    return c;
+  };
+
   function host() { return chrome.webview.hostObjects.sync.ponte; }
 
   // "log" (PonteLog) e' o objeto de host para logar do quadro do editor (achado 1 da revisao 2026-09-17:
@@ -151,6 +176,49 @@
     return caminho ? "callback chamado" : "callback chamado (cancelado)";
   };
 
+  // Comparar/combinar (Plano 6, Task 8): o resultado chega por window.onDocumentCompare/onDocumentMerge (o host chama no quadro).
+  function pedirComparacao(caminho, uso) {
+    var id = "";
+    try { id = host().PedirConversao(String(caminho || ""), 8192, uso); } catch (e) { logar(uso + ": " + e); }
+    if (!id) logar(uso + ": caminho sem consentimento (nao veio do dialogo)");
+  }
+  function base64ParaBuffer(b64) {
+    var s = atob(b64), n = s.length, u = new Uint8Array(n);
+    for (var i = 0; i < n; i++) u[i] = s.charCodeAt(i);
+    return u.buffer;
+  }
+  // Entrega da conversao pedida por convertFile: json = {"ok":true,"base64","tamanho","pasta","imagens"} ou {"ok":false}.
+  estado.entregarConversao = function (id, json) {
+    var cb = estado.conversoes && estado.conversoes[id];
+    if (!cb) return "sem pedido";
+    delete estado.conversoes[id];
+    var r;
+    try { r = JSON.parse(json); } catch (e) { r = { ok: false }; }
+    var obj = r.ok ? {
+      get: function () { return base64ParaBuffer(r.base64); },
+      getImages: function () { return r.imagens || {}; },
+      close: function () { try { host().LiberarConversao(id); } catch (e) { } }
+    } : null;
+    try { cb(obj); } catch (e) { logar("entregarConversao cb: " + e); }
+    return "ok";
+  };
+  // Entrega do "Abrir origem" (openExternalReference): 1 = abriu, 0 = nao (o sdkjs mostra o aviso dele).
+  estado.entregarReferencia = function (id, codigo) {
+    var cb = estado.referencias && estado.referencias[id];
+    if (!cb) return "sem pedido";
+    delete estado.referencias[id];
+    if (typeof cb === "function") { try { cb(codigo | 0); } catch (e) { logar("entregarReferencia cb: " + e); } }
+    return "ok";
+  };
+  // Entrega da leitura pedida por loadLocalFile: base64 dos bytes, ou "" (falhou) -> cb(null).
+  estado.entregarLeitura = function (id, b64) {
+    var cb = estado.leituras && estado.leituras[id];
+    if (!cb) return "sem pedido";
+    delete estado.leituras[id];
+    try { cb(b64 ? new Uint8Array(base64ParaBuffer(b64)) : null); } catch (e) { logar("entregarLeitura cb: " + e); }
+    return "ok";
+  };
+
   // O editor vive num iframe; o teste (e quem olha de fora) le o documento de cima. Marca nos dois.
   function marcarPronto() {
     if (estado.pronto) return;   // asc_onDocumentContentReady e AscDesktopEditor.onDocumentContentReady chamam os dois
@@ -171,6 +239,10 @@
 
   var ponte = {
     __moffice: true,
+
+    // Macros JavaScript do ONLYOFFICE: DESLIGADAS por decisao do dono (Plano 6). Defesa em profundidade junto de
+    // customization.macros:false da config injetada; o VBA dos arquivos so' e' preservado, nunca executado.
+    isSupportMacroses: function () { return false; },
 
     // --- ciclo de vida do editor
     CreateEditorApi: function (api) {
@@ -195,8 +267,9 @@
     InitJSContext: function () { },
     // Notificacao pura (sdk-all-min.js: `if (AscDesktopEditor.onDocumentContentReady) ...()`), sem retorno lido.
     onDocumentContentReady: function () { marcarPronto(); },
-    // app.js chama depois do doc:onready para a lista de recentes; o retorno nao e' lido.
-    LocalFileRecents: function () { },
+    // app.js chama depois do doc:onready para a lista de recentes; o retorno nao e' lido. Plano 6, Task 8: o host responde FORA desta
+    // chamada com window.onupdaterecents(<lista da casca>) neste quadro — o "Abrir recente" do menu Arquivo aparece preenchido.
+    LocalFileRecents: function () { avisar("recentes", ""); },
     ConsoleLog: function (s) { console.log(s); },
     SetDocumentName: function (nome) { try { document.title = nome; } catch (e) { } },
 
@@ -297,11 +370,27 @@
     // "</m_sPassword>" (CSV/TXT mandaria <m_nCsvTxtEncoding>..., fora deste plano). O conteudo leva a SENHA: nunca
     // vai para log (o host omite o parametro deste aviso; o grampo tambem).
     SetAdvancedOptions: function (x) { avisar("opcoesAvancadas", String(x || "")); },
-    // Conversao pedida pelo editor (inserir de arquivo): responde "nada convertido" — o callback trata o nulo.
+    // Conversao de arquivo para o binario do editor (Plano 6, Task 8). Contrato MEDIDO em sdkjs/word/sdk-all.js 9.4: o chamador
+    // espera cb(obj) com obj.get() -> ArrayBuffer, obj.getImages() -> mapa de midias, obj.close(). O host converte com o x2t fora
+    // da chamada sincrona e devolve por __moffice.entregarConversao. Sem consentimento (o caminho nao veio do dialogo): cb(null).
+    // Chamadores: Inserir > Texto do arquivo (word, 8193), vinculo externo e grafico ligado (8194), Dados > XML (cell, 8194).
     convertFile: function (caminho, formato, cb) {
-      semSuporte("convertFile", formato);
-      if (typeof cb === "function") { try { cb(null); } catch (e) { logar("convertFile callback: " + e); } }
+      var id = "";
+      try { id = host().PedirConversao(String(caminho || ""), formato | 0, "converter"); } catch (e) { logar("convertFile: " + e); }
+      if (!id) { if (typeof cb === "function") setTimeout(function () { try { cb(null); } catch (e) { logar("convertFile cb: " + e); } }, 0); return; }
+      (estado.conversoes = estado.conversoes || {})[id] = cb;
     },
+    // Dicionarios de hifenizacao (Plano 6, Task 8): o sdkjs pede <base><lang>/hyph_<lang>.dic. Sem isto a base era
+    // "../../../../dictionaries/" a partir do editor = https://moffice.local/dictionaries/, que nao existe (os dicionarios ficam em
+    // motor/dictionaries, ao lado de editors). O host mapeia moffice-dic.local para essa pasta (so' leitura, local).
+    getDictionariesPath: function () { return "https://moffice-dic.local/"; },
+    // Chamadas COM DIGITO no nome que a guarda PonteCompletaTests nao enxergava antes da Task 8 : neutras. GetImageBase64 e' a imagem da
+    // assinatura OOXML (Plano 7) e a imagem de criptografia; LoadFontBase64 = fonte do sistema para o editor; localSaveToDrawingFormat2 = salvar
+    // como imagem do nativo; Crypto_GetLocalImageBase64 = modo de criptografia (CryptoMode = 0: nunca ligado).
+    GetImageBase64: function () { semSuporte("GetImageBase64", "(assinatura OOXML: Plano 7)"); return ""; },
+    LoadFontBase64: function () { semSuporte("LoadFontBase64"); return ""; },
+    localSaveToDrawingFormat2: function () { semSuporte("localSaveToDrawingFormat2"); },
+    Crypto_GetLocalImageBase64: function () { semSuporte("Crypto_GetLocalImageBase64"); return ""; },
     // Criptografia, certificados, midia e visualizador nativo: capacidades que este host declara NAO ter
     // (IsProtectionSupport/IsSupportMedia/... = false). Se o editor chamar mesmo assim, registra e segue.
     NativeViewerOpen: function () { semSuporte("NativeViewerOpen"); },
@@ -335,16 +424,24 @@
       semSuporte("OpenWorkbook", "(mover/copiar planilha para pasta de trabalho nova)");
       avisar("semSuporte", "novaPastaDeTrabalho");
     },
-    // Vinculo externo: o callback recebe o codigo; 0 = "nao abriu" -> o proprio sdkjs mostra o aviso NAO critico dele.
+    // Vinculo externo -> "Abrir origem" (Plano 6, Task 8). MEDIDO em cell/sdk-all-min.js 9.4: `ref` e' o caminho do vinculo sem "file:///" e o
+    // callback trata 0 como "nao abriu" (aviso NAO critico do sdkjs) e qualquer outro valor como sucesso. O host pergunta ao usuario (o caminho
+    // vem do documento; fix 1 da revisao), confere a existencia so' depois do sim, pede a abertura em janela nova e responde 1/0 por
+    // __moffice.entregarReferencia. Recusado na hora (dispositivo, relativo, nao-planilha, ja' negado): cb(0), como antes.
     openExternalReference: function (ref, cb) {
-      semSuporte("openExternalReference");
-      if (typeof cb === "function") setTimeout(function () { try { cb(0); } catch (e) { logar("openExternalReference callback: " + e); } }, 0);
+      var id = "";
+      try { id = host().AbrirReferenciaExterna(typeof ref === "string" ? ref : String((ref && (ref.path || ref.Path)) || "")); }
+      catch (e) { logar("openExternalReference: " + e); }
+      if (!id) { if (typeof cb === "function") setTimeout(function () { try { cb(0); } catch (e) { logar("openExternalReference callback: " + e); } }, 0); return; }
+      (estado.referencias = estado.referencias || {})[id] = cb;
     },
-    // Importar CSV/TXT de arquivo (planilha): o callback trata o nulo (`ta && G(ta)`).
+    // Importar CSV/TXT de arquivo (planilha; Plano 6, Task 8): cb(Uint8Array) com os bytes do arquivo escolhido no dialogo "csv/txt" (o sdkjs
+    // detecta a codificacao pelo BOM: `AscCommon.Vbf`). Caminho sem consentimento do host: cb(null) — o chamador trata o nulo (`ta && G(ta)`).
     loadLocalFile: function (caminho, cb) {
-      semSuporte("loadLocalFile");
-      avisar("semSuporte", "importarTexto");
-      if (typeof cb === "function") setTimeout(function () { try { cb(null); } catch (e) { logar("loadLocalFile callback: " + e); } }, 0);
+      var id = "";
+      try { id = host().PedirLeitura(String(caminho || "")); } catch (e) { logar("loadLocalFile: " + e); }
+      if (!id) { if (typeof cb === "function") setTimeout(function () { try { cb(null); } catch (e) { logar("loadLocalFile cb: " + e); } }, 0); return; }
+      (estado.leituras = estado.leituras || {})[id] = cb;
     },
     // Salvar como imagem (formatos de desenho): o editor fica em "acao longa" ate' o nativo chamar
     // api.onLocalSaveToDrawingFormat(codigo); != 0 -> o aviso NAO critico do proprio sdkjs.
@@ -359,10 +456,12 @@
     emulateCloudPrinting: function () { },
     // So' e' consultado depois de SetPdfCloudPrintFileInfo existir (nao existe): "ja' em cache" = nada a mandar.
     IsCachedPdfCloudPrintFileInfo: function () { return true; },
-    // Comparar/combinar documentos (texto): o oficial abre outra instancia do conversor. Sem suporte.
-    CompareDocumentFile: function () { semSuporte("CompareDocumentFile"); avisar("semSuporte", "compararDocumento"); },
+    // Comparar/combinar com documento de arquivo (texto; Plano 6, Task 8). MEDIDO em word/sdk-all-min.js 9.4: o editor chama
+    // CompareDocumentFile(caminho, opcoes) depois do dialogo "word", e o nativo responde window.onDocumentCompare(pasta, base64, tamanho,
+    // imagens) / window.onDocumentMerge(...) (base64 "" = erro: o proprio editor mostra o aviso). O host converte e chama de volta neste quadro.
+    CompareDocumentFile: function (caminho) { pedirComparacao(caminho, "comparar"); },
     CompareDocumentUrl: function () { semSuporte("CompareDocumentUrl"); },
-    MergeDocumentFile: function () { semSuporte("MergeDocumentFile"); avisar("semSuporte", "compararDocumento"); },
+    MergeDocumentFile: function (caminho) { pedirComparacao(caminho, "combinar"); },
     MergeDocumentUrl: function () { semSuporte("MergeDocumentUrl"); },
     // Imagens de arquivos baixados (DownloadFiles, que ja' e' sem suporte): o formato vai para uma lista.
     // RemoveFile NUNCA apaga nada aqui (o caminho viria da pagina).
@@ -401,6 +500,10 @@
     // vazio. Na reabertura de uma pasta recuperada o host chama LocalFileSetSaved(false) e
     // LocalFileSetOpenChangesCount(n) logo depois de DesktopOfflineAppDocumentApplyChanges, antes do EndLoad —
     // e o documento aparece modificado mesmo sem nenhuma edicao nova. Fora disso, os padroes de sempre (salvo, 0).
+    // Plano 6, Task 5: restricao local do editor (Asc.c_oAscLocalRestrictionType). O host aplica ReadOnly com asc_setLocalRestrictions(t, true)
+    // (o `true` nao chama de volta); quem chama aqui e' o web-apps, que ao ver ReadOnly marca o cabecalho "Somente leitura" e volta a
+    // restricao para None (o documento fica editavel; salvar vira "Salvar como" pelo host). So' guarda e avisa (o host registra no log).
+    SetLocalRestrictions: function (t) { estado.restricao = t; avisar("restricao", String(t)); },
     LocalFileGetSaved: function () { return estado.salvo !== false; },
     LocalFileSetSaved: function (b) { estado.salvo = !!b; },
     LocalFileRecoverFolder: function (pasta) { estado.recovery = pasta; },
@@ -420,7 +523,10 @@
       catch (e) { logar("ImagemUrl: " + e); return "error"; }
     },
     LocalFileGetImageUrlCorrect: function (url) { return url; },
-    GetOpenedFile: function () { return null; },  // so usado com "binary_content://": aqui o bin vai em base64
+    // so usado com "binary_content://" (aqui o bin vai em base64) e, desde o Plano 6 (Task 3), pelo dialogo de importacao de CSV/TXT:
+    // asc_initAdvancedOptions(89, undefined, docinfo, 1) le' por aqui o COMECO do arquivo (previa e deteccao do delimitador). O host o
+    // entrega em __moffice.dadosAbertos (Uint8Array) SO durante essa chamada; fora dela segue null.
+    GetOpenedFile: function () { return (window.__moffice && window.__moffice.dadosAbertos) || null; },
     GetDropFiles: function () { return []; },
     IsImageFile: function () { return false; },
 
@@ -492,10 +598,10 @@
     // nenhuma a eles; ficam registrados no grampo para a Task 6 decidir o que responder.
     execCommand: function (cmd, json) { avisar("execCommand", JSON.stringify({ cmd: cmd || "", json: json || "" })); },
 
-    // --- dialogo de arquivo (hoje so' "inserir imagem do arquivo" passa por aqui)
-    // O callback recebe o CAMINHO escolhido (string; array quando multi) — e' o sdkjs que chama
-    // LocalFileGetImageUrl(caminho) depois (sdk-all.js:9919046, asc_addImage/qUa). Responder cb("") na hora,
-    // como estava antes, fazia "inserir imagem" nao fazer NADA em silencio.
+    // --- dialogo de arquivo, um por filtro do motor (Plano 6, Task 8; MvP-15/PL-08: FiltrosDoEditor no host)
+    // O callback recebe o CAMINHO escolhido (string; array quando multi) — e' o sdkjs que decide o que fazer com ele (imagem:
+    // LocalFileGetImageUrl(caminho), sdk-all.js:9919046; documento: convertFile/CompareDocumentFile; CSV: loadLocalFile). O host da' o
+    // consentimento de UM uso que o filtro autoriza. Responder cb("") na hora, como antes, fazia o recurso nao fazer NADA em silencio.
     OpenFilenameDialog: function (filtro, multi, cb) {
       // Imagem solta do Explorer (ver estado.inserirImagemSolta): responde na hora, sem dialogo.
       if (estado.imagemSolta && filtro === "images") {
@@ -504,21 +610,9 @@
         if (cb) cb(solta);
         return;
       }
-      // Dialogos de fluxos SEM suporte: o host so' tem o dialogo de IMAGEM, que com estes filtros nao deixaria escolher
-      // o arquivo certo — o usuario cancelaria sem saber por que. Responde "cancelado" na hora (os chamadores testam o
-      // caminho vazio: `oa && "" != oa`, `T && loadLocalFile`) e a casca mostra a faixa. "word" = comparar/combinar
-      // documento (texto); "csv/txt" = importar texto de arquivo (planilha). Revisao final do Plano 4.
-      var semSuporteDoFiltro = { "word": "compararDocumento", "csv/txt": "importarTexto" }[filtro];
-      if (semSuporteDoFiltro) {
-        semSuporte("OpenFilenameDialog " + filtro);
-        avisar("semSuporte", semSuporteDoFiltro);
-        if (cb) setTimeout(function () { try { cb(""); } catch (e) { logar("OpenFilenameDialog callback: " + e); } }, 0);
-        return;
-      }
       if (estado.dialogoPendente) { logar("OpenFilenameDialog: ja ha um dialogo pendente"); return; }
       estado.dialogoPendente = cb || null;
-      if (multi) logar("OpenFilenameDialog multi=true: o host responde um arquivo so");
-      avisar("abrirImagem", filtro || "");
+      avisar("abrirArquivo", JSON.stringify({ filtro: filtro || "", multi: !!multi }));
     },
     SaveFilenameDialog: function (filtro, cb) { if (cb) cb(""); },
     // Impressao (Task 4 do Plano 3). O editor chama Print(json) ao confirmar o painel Arquivo -> Imprimir ou o
@@ -631,6 +725,21 @@
 
   function apiDoEditor() { return estado.api || (window.Asc && window.Asc.editor) || window.editor; }
 
+  // Iniciar a apresentacao (Plano 6: .ppsx pelo Explorer e, na Task 7, F5/Shift+F5). MEDIDO em
+  // presentationeditor/main/app.js 9.4: o atalho Ctrl+F5 do editor faz Common.NotificationCenter.trigger("preview:start", 0),
+  // e o botao "Do slide atual" chama onPreview(api.getCurrentPage(), false, true) -> trigger("preview:start", n, false, false, true).
+  // E' o caminho da interface (abre o painel de apresentacao); api.StartDemonstration sozinho nao abre o painel.
+  // Devolve "ok" ou o motivo (o host registra no log).
+  estado.iniciarApresentacao = function (doSlideAtual) {
+    var api = apiDoEditor();
+    if (!window.Common || !Common.NotificationCenter || !api) return "sem editor de apresentacao";
+    try {
+      if (doSlideAtual) Common.NotificationCenter.trigger("preview:start", api.getCurrentPage(), false, false, true);
+      else Common.NotificationCenter.trigger("preview:start", 0);
+    } catch (e) { return "erro: " + e; }
+    return "ok";
+  };
+
   // Entrega um reporter_command ao editor como se viesse da janela do apresentador (API publica
   // DemonstrationReporterMessages = o tratador `rJc` de sdkjs/slide, que le' `event.data` como JSON).
   function comandoDoApresentador(c) {
@@ -650,6 +759,42 @@
     var cheia = estado.telaCheia;
     try { if (!cheia && window.top !== window && window.top.__moffice) cheia = window.top.__moffice.telaCheia; } catch (e) { }
     if (cheia) avisar("escTelaCheia", "");
+  }, true);
+
+  // Atalhos do Office que o editor web nao tem (Plano 6, Task 7). Fase de CAPTURA: roda antes dos ouvintes do editor; o que for
+  // tratado aqui para (preventDefault + stopPropagation). O resto segue para o editor como sempre (Ctrl+F, Ctrl+P, Ctrl+S, Ctrl+Z/Y, Ctrl+N).
+  // Canal = a PAGINA: com as aceleradoras do navegador desligadas (Task 6) e o WebView2 focado, o WPF nao ve' estas teclas.
+  window.addEventListener("keydown", function (ev) {
+    var k = ev.key, ctrl = ev.ctrlKey && !ev.altKey && !ev.metaKey, shift = ev.shiftKey, nada = !ev.ctrlKey && !ev.altKey && !ev.metaKey;
+    var tipo = window.PE ? "slide" : window.SSE ? "cell" : window.DE ? "word" : "";
+    var acao = null;
+    if (ctrl && !shift && (k === "o" || k === "O")) acao = "abrir";
+    else if (ctrl && !shift && (k === "w" || k === "W" || k === "F4")) acao = "fechar";
+    else if (nada && !shift && k === "F12") acao = "salvarComo";
+    else if (nada && shift && k === "F12") acao = "salvar";
+    else if (ctrl && !shift && k === "F6") acao = "proximaJanela";
+    else if (tipo === "slide" && nada && k === "F5") {
+      // F5 = do inicio; Shift+F5 = do slide atual. Durante a apresentacao (tela cheia) a tecla e' do apresentador: nao reinicia.
+      var apresentando = estado.telaCheia;
+      try { if (!apresentando && window.top !== window && window.top.__moffice) apresentando = window.top.__moffice.telaCheia; } catch (e) { }
+      if (apresentando) return;
+      ev.preventDefault(); ev.stopPropagation();
+      if (ev.repeat) return;   // tecla segurada: nao reinicia a apresentacao
+      logar("atalho F5: " + estado.iniciarApresentacao(shift));
+      return;
+    }
+    else if (tipo === "cell" && ((ctrl && !shift && (k === "g" || k === "G")) || (nada && !shift && k === "F5"))) {
+      ev.preventDefault(); ev.stopPropagation();
+      // "Ir para" do Excel: no motor nao ha' dialogo, so' a Caixa de Nome.
+      if (ev.repeat) return;
+      var caixa = document.querySelector("#ce-cell-name");
+      if (caixa) { caixa.focus(); if (caixa.select) caixa.select(); } else logar("atalho Ir para: sem #ce-cell-name");
+      return;
+    }
+    if (!acao) return;
+    ev.preventDefault(); ev.stopPropagation();
+    if (ev.repeat) return;   // tecla segurada: o autorepeat nao reabre dialogo nem refecha janela (a tecla continua engolida)
+    avisar("atalho", acao);
   }, true);
 
   window.AscDesktopEditor = ponte;

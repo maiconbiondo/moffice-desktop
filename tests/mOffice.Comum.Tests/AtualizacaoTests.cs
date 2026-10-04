@@ -1233,6 +1233,10 @@ public class AtualizacaoRoteamentoTests
         Assert.Contains("if (vm.InstaladorPronto is { } arquivo) Dispatcher.BeginInvoke(() => IniciarAtualizacao(arquivo));", app);
         Assert.Contains("_janelas.FecharTodas();", app);
         Assert.Contains("PerguntarAoFechar = DialogoFechar.PerguntarAsync,", app);
+        // Plano 6, Task 5: as perguntas da trava com os dialogos da casca, e o "Cancelar" do arquivo em uso volta a' boas-vindas sem erro
+        Assert.Contains("PerguntarEmUso = DialogoConflito.PerguntarEmUsoAsync,", app);
+        Assert.Contains("PerguntarConflito = DialogoConflito.PerguntarAsync,", app);
+        Assert.Contains("ex is JanelaEditor.ConversaoDePdfRecusadaException or JanelaEditor.AberturaEmUsoCanceladaException", app);
         // I-2: todo fechamento abandonado desarma, e voltar a trabalhar tambem
         Assert.Contains("j.FechamentoAbortado += () => DesarmarAtualizacao(", app);
         foreach (var metodo in new[] { "private async Task AbrirSeguroAsync(", "private async Task NovoSeguroAsync(",

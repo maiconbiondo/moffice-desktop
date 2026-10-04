@@ -29,6 +29,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Plano 6, Task 2: documentos legados sinteticos (ver Fixtures\legado\ORIGEM.txt). -->
+    <None Include="Fixtures\legado\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\mOffice.Nucleo\mOffice.Nucleo.csproj" />
     <ProjectReference Include="..\mOffice.Conversor.Tests\mOffice.Conversor.Tests.csproj" />
   </ItemGroup>

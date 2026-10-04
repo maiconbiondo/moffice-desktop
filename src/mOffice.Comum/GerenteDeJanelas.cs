@@ -83,6 +83,15 @@ public sealed class GerenteDeJanelas
 
     public Task NovoAsync() => CriarAsync(null);
 
+    /// <summary>A janela de documento que vem depois de <paramref name="atual"/> na ordem de abertura, voltando a primeira depois da ultima
+    /// (Ctrl+F6 do Office). Com uma so' devolve ela mesma; <paramref name="atual"/> fora do registro, a primeira; sem janelas, <c>null</c>.</summary>
+    public IJanelaDocumento? ProximaDepois(IJanelaDocumento atual)
+    {
+        if (_abertas.Count == 0) return null;
+        var i = _abertas.FindIndex(a => ReferenceEquals(a.Janela, atual));
+        return _abertas[(i + 1) % _abertas.Count].Janela;
+    }
+
     /// <summary>
     /// Janela criada por uma fabrica PROPRIA — a reabertura de um documento recuperado (Task 3 do Plano 3), que
     /// carrega de uma pasta de recuperacao e nao de um caminho. Mesma politica de <see cref="NovoAsync"/>:

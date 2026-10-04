@@ -49,7 +49,6 @@ public class AplicativoOfficeTests
     [InlineData("editor:onready")]
     [InlineData("doc:onready")]
     [InlineData("quickaccess:changed")]
-    [InlineData("uitheme:changed")]
     [InlineData("title:mousemove")]
     [InlineData("title:button")]
     [InlineData("althints:show")]
@@ -66,6 +65,40 @@ public class AplicativoOfficeTests
     [InlineData("")]
     public void EhRuidoConhecido_NaoEngoleComandoDesconhecido(string comando)
         => Assert.False(AplicativoOffice.EhRuidoConhecido(comando));
+
+    [Theory] // Plano 6, Task 4: o tema escolhido dentro do editor vira id do motor; theme-system e inventado voltam ao do mOffice
+    [InlineData("{\"name\":\"theme-white\",\"type\":\"light\"}", "theme-white")]
+    [InlineData("{\"name\":\"theme-night\",\"type\":\"dark\"}", "theme-night")]
+    [InlineData("{\"name\":\"theme-system\"}", null)]
+    [InlineData("{\"name\":\"inventado\"}", null)]
+    [InlineData("nao e json", null)]
+    [InlineData("", null)]
+    public void TemaDoEditor_DeUithemeChanged(string json, string? esperado)
+        => Assert.Equal(esperado, AplicativoOffice.TemaDoComando(json));
+
+    [Theory] // minor: so' tema conhecido do motor vai para a janela (config.json editado a mao nao injeta nada na URL)
+    [InlineData("theme-night", "theme-night")]
+    [InlineData("theme-system", null)]
+    [InlineData("x&userid=1", null)]
+    [InlineData(null, null)]
+    public void TemaEditorValido_SoConhecidos(string? id, string? esperado)
+        => Assert.Equal(esperado, AplicativoOffice.TemaEditorValido(id));
+
+    [Fact] // uitheme:changed agora e' tratado: nao e' mais ruido silenciado
+    public void UithemeChanged_NaoEhMaisSilencioso() => Assert.False(AplicativoOffice.EhRuidoConhecido("uitheme:changed"));
+
+    [Theory] // formato do documento novo: OOXML por padrao, o OpenDocument irmao quando as Configuracoes pedem
+    [InlineData("mtexto", false, mOffice.Conversor.FormatoDocumento.Docx)]
+    [InlineData("mtexto", true, mOffice.Conversor.FormatoDocumento.Odt)]
+    [InlineData("mplanilha", false, mOffice.Conversor.FormatoDocumento.Xlsx)]
+    [InlineData("mplanilha", true, mOffice.Conversor.FormatoDocumento.Ods)]
+    [InlineData("mslides", false, mOffice.Conversor.FormatoDocumento.Pptx)]
+    [InlineData("mslides", true, mOffice.Conversor.FormatoDocumento.Odp)]
+    public void FormatoDoNovo_PorConfiguracao(string app, bool odf, mOffice.Conversor.FormatoDocumento esperado)
+    {
+        var perfil = app == "mtexto" ? PerfilApp.Texto : app == "mplanilha" ? PerfilApp.Planilha : PerfilApp.Slides;
+        Assert.Equal(esperado, AplicativoOffice.FormatoDoNovo(perfil, odf));
+    }
 
     [Fact] // achado da revisao final do Plano 2: a raiz de recuperacao e' COMPARTILHADA pelos tres apps, entao
            // a varredura de subida de um apagaria a pasta de um documento ocioso aberto em outro. A spec §5
@@ -134,20 +167,46 @@ public class AplicativoOfficeTests
         const string alterado = mOffice.Nucleo.JanelaEditor.AvisoOriginalAlterado;
         // Task 7 do Plano 3: sessao recuperada de documento protegido, sem senha -> aviso de definir a senha de novo,
         // sem consumir o aviso de recuperaveis (ele fica para a proxima janela que abrir).
-        Assert.Equal((senha, false), AplicativoOffice.AvisoAoFicarPronto(false, null, true, false, "ha recuperaveis"));
+        Assert.Equal((senha, false), AplicativoOffice.AvisoAoFicarPronto(false, null, true, false, "ha recuperaveis", []));
         Assert.Contains("Arquivo → Proteger", senha);
         // Revisao final do Plano 3: midias indisponiveis NAO escondem mais o aviso da senha (antes o primeiro vencia e
         // o usuario so' via "sem midia" — e salvava o documento sem protecao). Os dois aparecem, sem consumir.
-        Assert.Equal(("sem midia. " + senha, false), AplicativoOffice.AvisoAoFicarPronto(true, "sem midia", true, false, "ha recuperaveis"));
+        Assert.Equal(("sem midia. " + senha, false), AplicativoOffice.AvisoAoFicarPronto(true, "sem midia", true, false, "ha recuperaveis", []));
         // I2: original alterado depois da queda, sozinho e junto com os outros.
-        Assert.Equal((alterado, false), AplicativoOffice.AvisoAoFicarPronto(false, null, false, true, "ha recuperaveis"));
-        Assert.Equal(("sem midia. " + senha + " " + alterado, false), AplicativoOffice.AvisoAoFicarPronto(true, "sem midia", true, true, null));
+        Assert.Equal((alterado, false), AplicativoOffice.AvisoAoFicarPronto(false, null, false, true, "ha recuperaveis", []));
+        Assert.Equal(("sem midia. " + senha + " " + alterado, false), AplicativoOffice.AvisoAoFicarPronto(true, "sem midia", true, true, null, []));
         Assert.Contains("nome novo", alterado);
         // Midias sozinhas: o erro do nucleo, sem consumir (como antes).
-        Assert.Equal(("sem midia.", false), AplicativoOffice.AvisoAoFicarPronto(true, "sem midia", false, false, "ha recuperaveis"));
+        Assert.Equal(("sem midia.", false), AplicativoOffice.AvisoAoFicarPronto(true, "sem midia", false, false, "ha recuperaveis", []));
         // Sem nada disso: o aviso de recuperaveis aparece e e' consumido (como antes da Task 7).
-        Assert.Equal(("ha recuperaveis", true), AplicativoOffice.AvisoAoFicarPronto(false, null, false, false, "ha recuperaveis"));
-        Assert.Equal(((string?)null, true), AplicativoOffice.AvisoAoFicarPronto(false, null, false, false, null));
+        Assert.Equal(("ha recuperaveis", true), AplicativoOffice.AvisoAoFicarPronto(false, null, false, false, "ha recuperaveis", []));
+        Assert.Equal(((string?)null, true), AplicativoOffice.AvisoAoFicarPronto(false, null, false, false, null, []));
+    }
+
+    [Fact] // Plano 6, Task 2: o aviso de abertura (compatibilidade/macros) entra depois dos demais e, como eles, nao consome o de recuperaveis
+    public void AvisoAoFicarPronto_UsaOAvisoDeAbertura()
+    {
+        var compat = mOffice.Nucleo.JanelaEditor.MensagemCompatibilidade(mOffice.Conversor.TabelaFormatos.DaExtensao(".doc")!);
+        Assert.Equal((compat, false), AplicativoOffice.AvisoAoFicarPronto(false, null, false, false, "ha recuperaveis", [compat]));
+        // TODAS as mensagens de abertura, na ordem de prioridade (revisao final do Plano 6: assinado E somente leitura mostrava so' a 1a)
+        Assert.Equal((compat + " segundo aviso.", false), AplicativoOffice.AvisoAoFicarPronto(false, null, false, false, null, [compat, "segundo aviso"]));
+        var ro = mOffice.Nucleo.JanelaEditor.MensagemSomenteLeitura(mOffice.Nucleo.Travas.EstadoAcesso.SomenteLeituraAtributo);
+        Assert.Equal((ro + " " + mOffice.Nucleo.JanelaEditor.AvisoAssinaturaDigital, false),
+            AplicativoOffice.AvisoAoFicarPronto(false, null, false, false, null, [ro, mOffice.Nucleo.JanelaEditor.AvisoAssinaturaDigital, " "]));
+        // junto dos avisos do nucleo, depois deles
+        Assert.Equal(("sem midia. " + compat, false), AplicativoOffice.AvisoAoFicarPronto(true, "sem midia", false, false, null, [compat]));
+        Assert.Equal("Este documento está no formato antigo do Word (.doc). Ao salvar, o mOffice grava uma cópia em .docx; o arquivo original não é alterado.", compat);
+        Assert.Equal("Este documento está no formato antigo do Excel (.xlsb). Ao salvar, o mOffice grava uma cópia em .xlsx; o arquivo original não é alterado.",
+            mOffice.Nucleo.JanelaEditor.MensagemCompatibilidade(mOffice.Conversor.TabelaFormatos.DaExtensao(".xlsb")!));
+        Assert.Equal("Este documento está no formato antigo do PowerPoint (.pps). Ao salvar, o mOffice grava uma cópia em .pptx; o arquivo original não é alterado.",
+            mOffice.Nucleo.JanelaEditor.MensagemCompatibilidade(mOffice.Conversor.TabelaFormatos.DaExtensao(".pps")!));
+    }
+
+    [Fact] // FMT-05: "Abrir com" de um arquivo que o app nao abre nao some em silencio — o rejeitado sai com a mensagem do perfil
+    public void PrimeiroArquivoAceito_FachadaDoPedido()
+    {
+        Assert.Equal(@"C:\x\a.doc", AplicativoOffice.PrimeiroArquivoAceito([@"C:\x\a.doc"], PerfilApp.Texto));
+        Assert.Null(AplicativoOffice.PrimeiroArquivoAceito([@"C:\x\a.pdf"], PerfilApp.Texto));
     }
 
     [Fact] // recusa do RecuperarAsync (antes de o editor abrir) vai SEM o sufixo "use Descartar": diante de "já
@@ -342,5 +401,39 @@ public class AplicativoOfficeTests
         var d = AppContext.BaseDirectory;
         while (!File.Exists(Path.Combine(d, "mOffice.slnx"))) d = Path.GetDirectoryName(d)!;
         return d;
+    }
+
+    [Fact] // Fix 1 (seguranca): "open:recent" so' abre o que ESTA nos recentes do app (o caminho vem da pagina)
+    public void RecenteDaLista_SoCaminhosDaLista()
+    {
+        string[] lista = [@"C:\Processos\peticao inicial.docx", @"\\srv\juridico\contestacao.docx"];
+        Assert.Equal(@"C:\Processos\peticao inicial.docx", AplicativoOffice.RecenteDaLista(@"c:\processos\PETICAO INICIAL.docx", lista));
+        Assert.Equal(@"\\srv\juridico\contestacao.docx", AplicativoOffice.RecenteDaLista(@"\\srv\juridico\x\..\contestacao.docx", lista));
+        Assert.Null(AplicativoOffice.RecenteDaLista(@"C:\Users\fulano\Documents\salarios.xlsx", lista));
+        Assert.Null(AplicativoOffice.RecenteDaLista(@"\\atacante\share\x.docx", lista));
+        Assert.Null(AplicativoOffice.RecenteDaLista("peticao inicial.docx", lista));
+        Assert.Null(AplicativoOffice.RecenteDaLista("", lista));
+    }
+
+    [Fact] // "Abrir Local do Arquivo" abre o Explorer com o arquivo selecionado
+    public void ComandoAbrirPasta_ExplorerSelect()
+    {
+        var p = AplicativoOffice.ComandoAbrirPasta(@"C:\Processos\peticao inicial.docx");
+        Assert.Equal(("explorer.exe", "/select,\"C:\\Processos\\peticao inicial.docx\""), (p.FileName, p.Arguments));
+    }
+
+    [Fact] // revisao final do Plano 6: o aviso do /imprimir (sem janela) vai na frente (DefaultDesktopOnly), e e' o unico MessageBox sem dono da casca
+    public void Imprimir_AvisoSemJanela_NaFrente()
+    {
+        Assert.Equal(System.Windows.MessageBoxOptions.DefaultDesktopOnly, AplicativoOffice.OpcoesDoAvisoSemJanela);
+        var fonte = File.ReadAllText(Path.Combine(FonteSimbolosRaiz(), "src", "mOffice.Comum", "AplicativoOffice.cs"));
+        Assert.Contains("avisar: m => AvisarSemJanela(m, _perfil.NomeExibicao)", fonte);
+    }
+
+    private static string FonteSimbolosRaiz()
+    {
+        var d = new DirectoryInfo(AppContext.BaseDirectory);
+        while (d is not null && !File.Exists(Path.Combine(d.FullName, "mOffice.slnx"))) d = d.Parent;
+        return d?.FullName ?? throw new InvalidOperationException("raiz do repositorio nao encontrada");
     }
 }

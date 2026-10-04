@@ -9,6 +9,7 @@ public sealed class SessaoDocumento
     private string _arquivoOrigem = null!;
     private FormatoDocumento _formato;
     private bool _novo;
+    private bool _compat;
 
     // `init` (nao um `set` publico) para a construcao normal em JanelaEditor.AbrirAsync: o unico outro lugar
     // que muda estes dois e' Repontar, que grava direto no campo (permitido dentro da propria classe) — assim
@@ -80,43 +81,141 @@ public sealed class SessaoDocumento
     /// <see cref="ApagarRecovery"/> ou <see cref="LiberarTrava"/>.</summary>
     internal Recuperacao.TravaSessao? Trava { get; set; }
 
-    /// <summary>Solta a trava sem apagar nada (fechar deixando a pasta para uma recuperacao — so' testes).</summary>
+    /// <summary>Solta a trava sem apagar nada (fechar deixando a pasta para uma recuperacao — so' testes). Solta tambem a trava do
+    /// ORIGINAL (Plano 6, Task 5): todo fechamento da janela passa por aqui ou por <see cref="ApagarRecovery"/>.</summary>
     internal void LiberarTrava()
     {
         Trava?.Dispose();
         Trava = null;
+        SoltarTravaDoOriginal();
     }
+
+    // --- Trava do arquivo do usuario (Plano 6, Task 5 — SO-02/MvP-05) ----------------------------------------------------
+
+    /// <summary>Handle de leitura sobre o original + arquivo de dono <c>~$</c> (<see cref="Travas.TravaDoDocumento"/>). Adquirida quando
+    /// o x2t termina de ler um original <see cref="Travas.EstadoAcesso.Livre"/>; muda para o arquivo novo no "Salvar como"; solta e
+    /// apagada (o <c>~$</c>) no fechamento. Independente da pasta de recuperacao: um fechamento que MANTEM a pasta (queda simulada,
+    /// encerramento do Windows) tambem solta o original. Processo morto: o SO solta o handle e o <c>~$</c> fica (como no Word) — a
+    /// proxima abertura, sem handle de ninguem, sonda <c>Livre</c> e o substitui.</summary>
+    internal Travas.TravaDoDocumento? TravaDoOriginal { get; set; }
+
+    /// <summary>Estado do original na abertura/ultimo salvamento desta sessao (<see cref="Travas.CarimboArquivo"/>). Mudou na hora de
+    /// gravar por cima = conflito. <c>null</c>: sem original (novo) ou sessao recuperada (o I2 do Plano 3 trata o original mudado).</summary>
+    internal Travas.CarimboArquivo? Carimbo { get; set; }
+
+    /// <summary>A sessao abriu um original que nao pode ser gravado: em uso por outro, atributo somente leitura ou sem permissao. O
+    /// editor fica com a restricao ReadOnly (cabecalho "Somente leitura"), o "Salvar" vira "Salvar como" (<see cref="ExigeSalvarComo"/>)
+    /// e gravar no original e' recusado. Zerado no "Salvar como" que der certo (<see cref="Repontar"/>): o arquivo novo e' do usuario.</summary>
+    public bool SomenteLeitura { get; internal set; }
+
+    /// <summary>Por que a sessao e' <see cref="SomenteLeitura"/> (<see cref="Travas.EstadoAcesso.Livre"/> quando nao e').</summary>
+    public Travas.EstadoAcesso MotivoSomenteLeitura { get; internal set; }
+
+    /// <summary>Abertura <see cref="Travas.EstadoAcesso.Livre"/> ainda sem trava: o original e' travado quando o x2t terminar de le-lo
+    /// (inclusive depois da senha/opcoes de CSV, que reconvertem).</summary>
+    internal bool TravarAoAbrir { get; set; }
+
+    /// <summary>Copia do original em uso por outro, na pasta da sessao: e' ela que o x2t le' (tambem nas reconversoes de senha e CSV).
+    /// <c>null</c> fora desse caso.</summary>
+    internal string? CopiaDeLeitura { get; init; }
+
+    /// <summary>O arquivo que o x2t le' para abrir esta sessao: a copia do original em uso, ou o proprio original.</summary>
+    internal string EntradaDeLeitura => CopiaDeLeitura ?? ArquivoOrigem;
+
+    /// <summary>Solta e descarta a trava do original (apaga o <c>~$</c>). Idempotente.</summary>
+    internal void SoltarTravaDoOriginal()
+    {
+        TravaDoOriginal?.Dispose();
+        TravaDoOriginal = null;
+    }
+
+    /// <summary>Codificacao e delimitador do CSV/TXT desta sessao (Plano 6, Task 3): os que o usuario escolheu no dialogo de abertura
+    /// ou na linha do "Salvar como". O "Salvar" seguinte (mesmo arquivo) grava com eles — um CSV ANSI aberto salva ANSI, como o Excel.
+    /// <c>null</c> fora de CSV/TXT (e numa sessao recuperada, que cai no padrao do formato).</summary>
+    public OpcoesTexto? OpcoesTexto
+    {
+        get => _opcoesTexto;
+        set
+        {
+            _opcoesTexto = value;
+            if (value is not null) OpcoesTextoDesconhecidas = false;
+            // O sessao.json acompanha: uma sessao RECUPERADA de CSV/TXT tem de regravar o arquivo com a MESMA codificacao/delimitador.
+            if (Metadados is { } m)
+            {
+                Metadados = ComOpcoesDeTexto(m);
+                try { Metadados.Gravar(PastaRecovery); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            }
+        }
+    }
+    private OpcoesTexto? _opcoesTexto;
+
+    private Recuperacao.MetadadosSessao ComOpcoesDeTexto(Recuperacao.MetadadosSessao m) =>
+        m with { TextoCodificacao = _opcoesTexto?.Codificacao, TextoDelimitador = _opcoesTexto?.Delimitador, TextoDelimitadorChar = _opcoesTexto?.DelimitadorChar };
+
+    /// <summary>Sessao CSV/TXT recuperada de um <c>sessao.json</c> SEM as opcoes de texto (ou ilegiveis): nao se sabe com que codificacao o
+    /// original foi lido. O "Salvar" vira "Salvar como" (<see cref="ExigeSalvarComo"/>) e gravar por cima do original sem escolher as
+    /// opcoes numa linha do dialogo e' recusado — nunca se adivinha uma codificacao para o arquivo que o usuario ja' tem. Zerado ao
+    /// definir <see cref="OpcoesTexto"/> ou no "Salvar como" que der certo.</summary>
+    internal bool OpcoesTextoDesconhecidas { get; set; }
+
+    /// <summary>Titulo do documento NOVO que nasce de um arquivo convertido (PDF aberto como documento, Plano 6, Task 3): o nome do
+    /// PDF em vez do rotulo generico. Tem precedencia sobre o rotulo; so' vale enquanto o documento for <see cref="Novo"/>.</summary>
+    public string? TituloDoNovo { get; init; }
 
     /// <summary>Documento NOVO (Task 2 do Marco 1 / Plano 2): a sessao nasceu de uma copia do modelo vazio do
     /// motor (<see cref="ModelosVazios"/>), nao de um arquivo do usuario. Consequencias: o titulo e' generico
-    /// ("Documento"/"Planilha"/"Apresentação", nao "new.docx") e "Salvar" tem de virar "Salvar como" — nao ha
+    /// ("Documento1"/"Pasta1"/"Apresentação1" pelo ContadorDeNovos, nao "new.docx") e "Salvar" tem de virar "Salvar como" — nao ha
     /// arquivo de origem para gravar por cima. Campo de apoio (e nao `{ get; init; }` puro) porque
     /// <see cref="Repontar"/> precisa zera-lo: depois do primeiro "salvar como" a sessao passa a ter arquivo
     /// de verdade e deixa de ser nova.</summary>
     public bool Novo { get => _novo; init => _novo = value; }
 
+    /// <summary>Modo de compatibilidade (Plano 6, Task 2): a sessao veio de um formato LEGADO (.doc/.xls/.ppt…) que o x2t le' mas
+    /// nao grava. <see cref="Formato"/> ja' e' o moderno do tipo (.docx/.xlsx/.pptx) e <see cref="ArquivoOrigem"/> continua o
+    /// arquivo antigo, que nunca e' regravado: o primeiro "Salvar" vira "Salvar como" (<see cref="ExigeSalvarComo"/>). Campo de
+    /// apoio porque <see cref="Repontar"/> o zera — depois do primeiro "Salvar como" a sessao aponta para o arquivo novo.</summary>
+    public bool Compatibilidade { get => _compat; init => _compat = value; }
+
+    /// <summary>O "Salvar" desta sessao tem de perguntar o destino: nao ha' arquivo gravavel de origem (documento novo, original
+    /// de uma sessao recuperada que mudou, formato legado, original somente leitura ou em uso — Plano 6, Task 5).</summary>
+    public bool ExigeSalvarComo => Novo || Desvinculada || Compatibilidade || OpcoesTextoDesconhecidas || SomenteLeitura;
+
     /// <summary>O que aparece na barra de titulo da janela e no <c>SetDocumentName</c> do editor: o nome do
     /// arquivo, ou o rotulo generico por tipo enquanto o documento for <see cref="Novo"/>.</summary>
     public string Titulo => Novo
-        ? Formato.DocType() switch { "cell" => "Planilha", "slide" => "Apresentação", _ => "Documento" }
+        ? TituloDoNovo ?? (NumeroDoNovo > 0 ? RotuloDoNovo + NumeroDoNovo : RotuloDoNovo)
         : Path.GetFileName(ArquivoOrigem);
+
+    /// <summary>Numero do documento novo no processo (Documento1, Pasta2…; <see cref="ContadorDeNovos"/>). 0 = sem numero: sessao criada
+    /// fora da janela (testes, sessao recuperada) fica so' com o rotulo.</summary>
+    public int NumeroDoNovo { get; init; }
+
+    private string RotuloDoNovo => Formato.DocType() switch { "cell" => "Pasta", "slide" => "Apresentação", _ => "Documento" };
 
     /// <summary>Depois de um "Salvar como" bem-sucedido a sessao passa a apontar para o arquivo NOVO — mesma
     /// decisao dos editores reais (o Word/LibreOffice tambem "adotam" o destino do salvar como). A partir daqui
     /// um <see cref="JanelaEditor.SalvarAsync"/> grava no arquivo novo, nao mais no antigo.</summary>
-    public void Repontar(string novoArquivo, FormatoDocumento novoFormato)
+    public void Repontar(string novoArquivo, FormatoDocumento novoFormato, OpcoesTexto? texto = null)
     {
         _arquivoOrigem = novoArquivo;
         _formato = novoFormato;
+        // Plano 6, Task 3: so' CSV/TXT guardam codificacao e delimitador; qualquer outro formato zera (um "Salvar" seguinte nao herda).
+        _opcoesTexto = novoFormato is FormatoDocumento.Csv or FormatoDocumento.Txt ? texto : null;
+        OpcoesTextoDesconhecidas = false;
         // Task 2 do Marco 1 / Plano 2: o "salvar como" e' EXATAMENTE o momento em que um documento novo deixa
         // de ser novo — passa a ter arquivo de verdade, titulo com o nome dele e "Salvar" grava por cima.
         _novo = false;
+        // Plano 6, Task 2: depois do "Salvar como" de um legado a sessao aponta para o arquivo MODERNO novo.
+        _compat = false;
+        // Plano 6, Task 5: o arquivo novo foi gravado pelo usuario — deixa de ser somente leitura (como no Office).
+        SomenteLeitura = false;
+        MotivoSomenteLeitura = Travas.EstadoAcesso.Livre;
         // Task 2 do Plano 3: uma queda DEPOIS do "salvar como" tem de reabrir apontando para o arquivo novo
         // (e com o titulo dele). O IdUsuario continua o mesmo — e' a mesma abertura da pasta. Melhor esforco:
         // o salvamento ja' deu certo, e falhar aqui so' pioraria a recuperacao, nao o documento.
         if (Metadados is { } m)
         {
-            Metadados = m with { Origem = novoArquivo, Formato = (int)novoFormato, Titulo = Titulo, Novo = false };
+            Metadados = ComOpcoesDeTexto(m) with { Origem = novoArquivo, Formato = (int)novoFormato, Titulo = Titulo, Novo = false, Compatibilidade = false };
             try { Metadados.Gravar(PastaRecovery); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
     }

@@ -54,6 +54,9 @@ public static class EditorReal
     {
         j.PerguntarAoFechar = _ => Task.FromResult(DecisaoFechar.NaoSalvar);
         j.PerguntaDeReserva = _ => Task.FromResult(DecisaoFechar.NaoSalvar);
+        // Plano 6, Task 5: as perguntas da trava (arquivo em uso, conflito ao salvar) tambem sao MessageBox por padrao.
+        j.PerguntarEmUso = (_, _, _) => Task.FromResult(false);
+        j.PerguntarConflito = _ => Task.FromResult(mOffice.Nucleo.Travas.DecisaoConflito.Cancelar);
         return j;
     }
 

@@ -141,7 +141,8 @@ Name: "{commonappdata}\mOffice\fontes"; Flags: uninsalwaysuninstall
 ;   sdkjs-plugins  plugins do ONLYOFFICE (fora do produto; alguns falam com a rede);
 ;   AllFonts.js    catalogo da maquina de BUILD (o do usuario e gerado na instalacao, ver [Run]);
 ;   ASC.ttf        fonte proprietaria (substituida pela mOffice Simbolos - backlog 13).
-Source: "{#PacoteDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,sdkjs-plugins,AllFonts.js,ASC.ttf"
+;   *.orig         copias do original deixadas pelo aplicar-patches.ps1 (o sdk-all.js.orig tem a fonte ASCW3 da Ascensio).
+Source: "{#PacoteDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,*.orig,sdkjs-plugins,AllFonts.js,ASC.ttf"
 
 [Icons]
 ; Menu Iniciar: sempre os tres apps (sem pasta de grupo, como o Windows 11 mostra).
@@ -158,80 +159,16 @@ Name: "{autodesktop}\mSlides"; Filename: "{app}\mSlides.exe"; Tasks: atalhodeskt
 ; Aplicativos padrao - NAO forca o padrao (essa escolha e do usuario, ou da politica do RMM em tools/rmm).
 ;
 ; Desinstalar remove SO o que e nosso:
-;   - os seis ProgIDs e as chaves Applications\<exe> e Software\mOffice\<App>: exclusivas do mOffice
-;     (uninsdeletekey);
+;   - os ProgIDs (um por extensao que abre) e as chaves Applications\<exe> e Software\mOffice\<App>: exclusivas do
+;     mOffice (uninsdeletekey);
 ;   - em .<ext>\OpenWithProgids e em RegisteredApplications, so o NOSSO valor (uninsdeletevalue) - as
 ;     chaves sao compartilhadas com outros programas e nunca sao apagadas.
 
-; --- ProgIDs (icone = o do proprio .exe; abrir = "<exe>" "%1", aspas nos dois) ---
-Root: HKLM; Subkey: "Software\Classes\mOffice.Texto.docx"; ValueType: string; ValueName: ""; ValueData: "Documento do Word (mTexto)"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Texto.docx\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\mTexto.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Texto.docx\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\mTexto.exe"" ""%1"""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Texto.odt"; ValueType: string; ValueName: ""; ValueData: "Documento OpenDocument (mTexto)"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Texto.odt\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\mTexto.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Texto.odt\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\mTexto.exe"" ""%1"""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Planilha.xlsx"; ValueType: string; ValueName: ""; ValueData: "Pasta de trabalho do Excel (mPlanilha)"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Planilha.xlsx\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\mPlanilha.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Planilha.xlsx\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\mPlanilha.exe"" ""%1"""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Planilha.ods"; ValueType: string; ValueName: ""; ValueData: "Planilha OpenDocument (mPlanilha)"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Planilha.ods\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\mPlanilha.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Planilha.ods\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\mPlanilha.exe"" ""%1"""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Slides.pptx"; ValueType: string; ValueName: ""; ValueData: "Apresentação do PowerPoint (mSlides)"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Slides.pptx\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\mSlides.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Slides.pptx\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\mSlides.exe"" ""%1"""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Slides.odp"; ValueType: string; ValueName: ""; ValueData: "Apresentação OpenDocument (mSlides)"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Slides.odp\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\mSlides.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\mOffice.Slides.odp\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\mSlides.exe"" ""%1"""; Tasks: associar
-
-; --- OpenWithProgids: o app aparece no "Abrir com" da extensao (valor VAZIO; o que conta e o nome) ---
-Root: HKLM; Subkey: "Software\Classes\.docx\OpenWithProgids"; ValueType: string; ValueName: "mOffice.Texto.docx"; ValueData: ""; Flags: uninsdeletevalue; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\.odt\OpenWithProgids"; ValueType: string; ValueName: "mOffice.Texto.odt"; ValueData: ""; Flags: uninsdeletevalue; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\.xlsx\OpenWithProgids"; ValueType: string; ValueName: "mOffice.Planilha.xlsx"; ValueData: ""; Flags: uninsdeletevalue; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\.ods\OpenWithProgids"; ValueType: string; ValueName: "mOffice.Planilha.ods"; ValueData: ""; Flags: uninsdeletevalue; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\.pptx\OpenWithProgids"; ValueType: string; ValueName: "mOffice.Slides.pptx"; ValueData: ""; Flags: uninsdeletevalue; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\.odp\OpenWithProgids"; ValueType: string; ValueName: "mOffice.Slides.odp"; ValueData: ""; Flags: uninsdeletevalue; Tasks: associar
-
-; --- Aplicativo REGISTRADO: e disso que o Windows 11 monta "Escolher outro aplicativo" e Aplicativos padrao ---
-; mTexto
-Root: HKLM; Subkey: "Software\Classes\Applications\mTexto.exe"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "mTexto"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mTexto.exe\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\mTexto.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mTexto.exe\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\mTexto.exe"" ""%1"""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mTexto.exe\SupportedTypes"; ValueType: string; ValueName: ".docx"; ValueData: ""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mTexto.exe\SupportedTypes"; ValueType: string; ValueName: ".odt"; ValueData: ""; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice"; Flags: uninsdeletekeyifempty; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mTexto"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mTexto\Capabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "mTexto"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mTexto\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Editor de textos do mOffice"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mTexto\Capabilities"; ValueType: string; ValueName: "ApplicationIcon"; ValueData: """{app}\mTexto.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mTexto\Capabilities\FileAssociations"; ValueType: string; ValueName: ".docx"; ValueData: "mOffice.Texto.docx"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mTexto\Capabilities\FileAssociations"; ValueType: string; ValueName: ".odt"; ValueData: "mOffice.Texto.odt"; Tasks: associar
-Root: HKLM; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "mOffice.mTexto"; ValueData: "Software\mOffice\mTexto\Capabilities"; Flags: uninsdeletevalue; Tasks: associar
-; mPlanilha
-Root: HKLM; Subkey: "Software\Classes\Applications\mPlanilha.exe"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "mPlanilha"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mPlanilha.exe\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\mPlanilha.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mPlanilha.exe\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\mPlanilha.exe"" ""%1"""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mPlanilha.exe\SupportedTypes"; ValueType: string; ValueName: ".xlsx"; ValueData: ""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mPlanilha.exe\SupportedTypes"; ValueType: string; ValueName: ".ods"; ValueData: ""; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mPlanilha"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mPlanilha\Capabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "mPlanilha"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mPlanilha\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Planilhas do mOffice"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mPlanilha\Capabilities"; ValueType: string; ValueName: "ApplicationIcon"; ValueData: """{app}\mPlanilha.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mPlanilha\Capabilities\FileAssociations"; ValueType: string; ValueName: ".xlsx"; ValueData: "mOffice.Planilha.xlsx"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mPlanilha\Capabilities\FileAssociations"; ValueType: string; ValueName: ".ods"; ValueData: "mOffice.Planilha.ods"; Tasks: associar
-Root: HKLM; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "mOffice.mPlanilha"; ValueData: "Software\mOffice\mPlanilha\Capabilities"; Flags: uninsdeletevalue; Tasks: associar
-; mSlides
-Root: HKLM; Subkey: "Software\Classes\Applications\mSlides.exe"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "mSlides"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mSlides.exe\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\mSlides.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mSlides.exe\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\mSlides.exe"" ""%1"""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mSlides.exe\SupportedTypes"; ValueType: string; ValueName: ".pptx"; ValueData: ""; Tasks: associar
-Root: HKLM; Subkey: "Software\Classes\Applications\mSlides.exe\SupportedTypes"; ValueType: string; ValueName: ".odp"; ValueData: ""; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mSlides"; Flags: uninsdeletekey; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mSlides\Capabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "mSlides"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mSlides\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Apresentações do mOffice"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mSlides\Capabilities"; ValueType: string; ValueName: "ApplicationIcon"; ValueData: """{app}\mSlides.exe"",0"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mSlides\Capabilities\FileAssociations"; ValueType: string; ValueName: ".pptx"; ValueData: "mOffice.Slides.pptx"; Tasks: associar
-Root: HKLM; Subkey: "Software\mOffice\mSlides\Capabilities\FileAssociations"; ValueType: string; ValueName: ".odp"; ValueData: "mOffice.Slides.odp"; Tasks: associar
-Root: HKLM; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "mOffice.mSlides"; ValueData: "Software\mOffice\mSlides\Capabilities"; Flags: uninsdeletevalue; Tasks: associar
+; As linhas abaixo (ProgIDs, OpenWithProgids, Applications, Capabilities, RegisteredApplications) sao GERADAS da TabelaFormatos
+; (Plano 6, Task 2): uma por extensao que o mOffice abre. Icone = o do proprio .exe; abrir = "<exe>" "%1"; modelo (.dotx...) =
+; "<exe>" /modelo "%1" (abre como documento NOVO) e apresentacao de slides (.ppsx...) = "<exe>" /apresentar "%1", ambos com o
+; verbo edit = "<exe>" "%1". Nao editar a mao: tests/mOffice.Comum.Tests/GeradorAssociacoes.cs (AssociacoesGeradas_EmDia).
+#include "associacoes.iss"
 
 ; Os dados de cada usuario (%LOCALAPPDATA%\mOffice: configuracoes, recentes, logs, recuperacao) NAO sao
 ; tocados pelo instalador nem pelo desinstalador.
@@ -728,14 +665,13 @@ end;
 // elemento por linha).
 function AssociacaoDoMOffice(const L: String): Boolean;
 begin
-  Result := (Pos('<Association ', L) > 0) and
-    ((Pos('Identifier=".docx"', L) > 0) or (Pos('Identifier=".odt"', L) > 0) or
-     (Pos('Identifier=".xlsx"', L) > 0) or (Pos('Identifier=".ods"', L) > 0) or
-     (Pos('Identifier=".pptx"', L) > 0) or (Pos('Identifier=".odp"', L) > 0));
+  // Plano 6, Task 2: "do mOffice" = aponta para um ProgID mOffice.* (as 17 do padrao do RMM e as seis de antes), em vez de uma
+  // lista de extensoes repetida aqui — a lista mora na TabelaFormatos e uma politica antiga continua sendo desfeita por inteiro.
+  Result := (Pos('<Association ', L) > 0) and (Pos('ProgId="mOffice.', L) > 0);
 end;
 
 // Mesma regra do remover-padrao-office.ps1: so mexe se a politica aponta para o XML DO mOffice; tira as
-// seis associacoes; sobrando associacao de outro app (ex.: .pdf do mPDF), o XML fica so com ela e a
+// associacoes do mOffice (as de ProgID mOffice.*); sobrando associacao de outro app (ex.: .pdf do mPDF), o XML fica so com ela e a
 // politica continua; senao apaga o VALOR (nunca a chave) e o XML. Os ProgIDs saem com o desinstalador, e
 // uma politica apontando para ProgID inexistente faria o Windows desfazer o padrao do usuario.
 procedure RemoverPoliticaDoRmm();

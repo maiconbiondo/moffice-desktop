@@ -14,4 +14,6 @@ namespace mOffice.Nucleo;
 /// <param name="Assinar">Depois de exportar o PDF com sucesso, pedir a assinatura pelo mPDF
 /// (<see cref="JanelaEditor.AssinarPedido"/>). Com formato de DOCUMENTO (a linha "PDF assinado" com extensao de documento
 /// digitada) nada e' assinado: o host so' avisa (<see cref="JanelaEditor.MensagemAssinarSalvouDocumento"/>).</param>
-public sealed record DestinoSalvar(string Caminho, FormatoDocumento Formato, bool Assinar = false);
+/// <param name="Texto">Codificacao e delimitador do CSV/TXT (Plano 6, Task 3): vem da linha do dialogo (ANSI/UTF-8) ou do padrao do
+/// formato quando a extensao foi digitada; <c>null</c> em qualquer outro formato.</param>
+public sealed record DestinoSalvar(string Caminho, FormatoDocumento Formato, bool Assinar = false, OpcoesTexto? Texto = null);

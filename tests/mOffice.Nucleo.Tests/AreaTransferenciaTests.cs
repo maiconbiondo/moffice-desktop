@@ -367,7 +367,9 @@ public class AreaTransferenciaJanelaTests
         {
             var docx = FabricaDocumentos.Docx(pasta, "Documento solto");
             var txt = Path.Combine(pasta, "nota.txt");
-            File.WriteAllText(txt, "nao abre");
+            File.WriteAllText(txt, "abre pelo dialogo de importacao");
+            var desconhecido = Path.Combine(pasta, "nota.xyz");
+            File.WriteAllText(desconhecido, "nao abre");
 
             JanelaSta.Executar(() => ComJanela(async j =>
             {
@@ -377,8 +379,8 @@ public class AreaTransferenciaJanelaTests
                 Assert.Equal("true", await EditorReal.Esperar(j, EditorReal.ProntoNoEditor, "true", 300));
                 var url = (await j.ExecutarJsAsync("location.href")).Trim('"');
 
-                await j.ArquivosSoltos([docx, txt]);
-                Assert.Equal([docx], pedidos);                          // o .txt nao vira pedido (o conversor nao o abre)
+                await j.ArquivosSoltos([docx, txt, desconhecido]);
+                Assert.Equal([docx, txt], pedidos);                     // o .txt agora abre (Plano 6, Task 3); formato desconhecido nao vira pedido
 
                 // O ouvinte de CAPTURA esta' instalado no quadro do editor: um drop de arquivo nao chega ao ondrop do
                 // sdkjs (area do documento) e e' cancelado mesmo FORA da area do sdkjs (o <body>, onde nenhum tratador
@@ -406,7 +408,7 @@ public class AreaTransferenciaJanelaTests
                 await Task.Delay(500);
                 Assert.Equal("true", (await j.ExecutarJsAsync(EditorReal.ProntoNoEditor)).Trim('"'));
                 Assert.Equal(url, (await j.ExecutarJsAsync("location.href")).Trim('"'));
-                Assert.Equal([docx], pedidos);                          // o File montado em JS nao traz caminho: nada novo
+                Assert.Equal([docx, txt], pedidos);                     // o File montado em JS nao traz caminho: nada novo
             }), TimeSpan.FromMinutes(3));
         }
         finally { ApagarPasta(pasta); }

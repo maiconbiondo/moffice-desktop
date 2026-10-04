@@ -120,18 +120,8 @@ public abstract class AplicativoOffice : Application
     /// qual <see cref="InstanciaUnica"/> recusa caminho relativo vindo do pipe). Os demais argumentos sao
     /// ignorados neste plano: abrir N arquivos de uma vez fica para depois.
     /// </summary>
-    public static string? PrimeiroArquivoAceito(string[] args, PerfilApp perfil)
-    {
-        foreach (var a in args)
-        {
-            if (string.IsNullOrWhiteSpace(a)) continue;
-            if (a.StartsWith('-') || a.StartsWith('/')) continue;
-            if (!perfil.Aceita(a)) continue;
-            try { return Path.GetFullPath(a); }
-            catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException or System.Security.SecurityException) { return null; }
-        }
-        return null;
-    }
+    public static string? PrimeiroArquivoAceito(string[] args, PerfilApp perfil) =>
+        PedidoDeAbertura.DosArgumentos(args, perfil, out _)?.Caminho;
 
     /// <summary>
     /// Idade minima de uma pasta de recuperacao para a varredura de subida apaga-la: <b>30 dias</b>, como a
@@ -171,6 +161,11 @@ public abstract class AplicativoOffice : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Ultimo recurso (I2 da revisao final do Plano 6): so' REGISTRA a excecao nao tratada e deixa o processo cair (Handled = false). Engolir
+        // aqui manteria o app vivo num estado que ninguem conferiu (uma sessao pela metade poderia gravar algo diferente da tela); cair e' o
+        // caminho que a recuperacao ja' cobre — nenhum Closed roda, as pastas de recuperacao ficam e a proxima abertura oferece recupera-las.
+        DispatcherUnhandledException += (_, a) => LogarErro(a.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, a) => { if (a.ExceptionObject is Exception ex) LogarErro(ex); };
         // (0) Verbos do RMM (/checkupdate, /update; Plano 5 Task 2, porte do mPDF): ANTES de tudo — da instancia
         // unica, das varreduras e de qualquer janela. Processo efemero: escreve UMA linha ASCII, sai com 0/10/20.
         // Task.Run OBRIGATORIO: no OnStartup o WPF ja' instalou o DispatcherSynchronizationContext, e esperar a
@@ -199,6 +194,16 @@ public abstract class AplicativoOffice : Application
             return;
         }
 
+        // (0c) /imprimir "%1" (Plano 6, Task 10; verbo Imprimir do Explorer): processo EFEMERO — converte, manda para a impressora padrao e sai (0/20), sem
+        // instancia unica nem janela de documento. NAO usa Task.Run(...).GetAwaiter().GetResult(): a Impressora usa uma WebView2 oculta e precisa do Dispatcher rodando.
+        var pedido = PedidoDeAbertura.DosArgumentos(e.Args, _perfil, out var rejeitado);
+        if (pedido is { Modo: ModoAbertura.Imprimir })
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = ImprimirEEncerrarAsync(pedido.Caminho);
+            return;
+        }
+
         // (1) Pastas por usuario + retencao. Igual a' subida da Sonda: recovery orfao de uma queda anterior
         // guarda o documento inteiro em claro, e os .log por janela se acumulam. Nenhuma das duas lanca.
         Pastas.Garantir(Pastas.Raiz);
@@ -206,6 +211,8 @@ public abstract class AplicativoOffice : Application
         Logs.Varrer(Pastas.Logs, Logs.RetencaoPadrao);
         // PDFs de impressao que uma queda deixou (Task 4 do Plano 3): cada janela apaga os seus ao fechar.
         mOffice.Nucleo.Impressao.PastaImpressao.Varrer(Pastas.Impressao, mOffice.Nucleo.Impressao.PastaImpressao.IdadeMinima);
+        // "Nao salvos recentemente" (Task 10): o que o usuario mandou "Nao salvar" ha' mais de 4 dias. Nunca toca pasta com a trava presa.
+        Descartados.Varrer(Pastas.Descartados, Descartados.Retencao);
         // XML de parametros do x2t que versoes anteriores deixavam na raiz do %TEMP% quando o processo morria no meio
         // de uma conversao (revisao final do Plano 3, M3): pode levar a senha de um documento em claro.
         X2tConversor.VarrerParametrosOrfaos(Path.GetTempPath(), IdadeMinimaParametrosX2t);
@@ -217,6 +224,8 @@ public abstract class AplicativoOffice : Application
         // (2) Configuracao e tema ANTES de qualquer janela: a primeira ja' nasce no tema certo (o tema do
         // EDITOR e' `init` na JanelaEditor — nao da' para corrigir depois).
         _config = Configuracoes.Padrao();
+        Configuracoes.Log = Logar;
+        Recentes.Log = Logar;
         JanelaEditor.GrampoLigado = _config.Grampo;
         _tema = TemaService.DoApp();
         _tema.Aplicar(_config.Tema);
@@ -224,15 +233,22 @@ public abstract class AplicativoOffice : Application
 
         // (3) Instancia unica ANTES de base.OnStartup e de qualquer janela: a segunda invocacao (duplo
         // clique num segundo arquivo) tem de encaminhar o caminho e MORRER sem nunca piscar uma tela.
-        var caminho = PrimeiroArquivoAceito(e.Args, _perfil);
         _instancia = new InstanciaUnica(NomesDeInstancia.Mutex(_perfil.Nome), NomesDeInstancia.Pipe(_perfil.Nome));
         // O loop do pipe roda numa thread de worker: BeginInvoke traz para a thread de UI. Nao ha' corrida
         // com o `_janelas` criado no passo (4) logo abaixo — estamos NA thread do Dispatcher, entao
         // qualquer item enfileirado aqui so' roda depois que este OnStartup inteiro terminar.
-        _instancia.CaminhoRecebido += c => Dispatcher.BeginInvoke(() => _ = AbrirSeguroAsync(c));
+        _instancia.CaminhoRecebido += linha => Dispatcher.BeginInvoke(() =>
+        {
+            // A linha do pipe e' o caminho puro ou "?modelo|<caminho>" / "?apresentar|<caminho>" (PedidoDeAbertura).
+            // M5 (backlog 72): diagnostico — o pedido da 2a instancia chegou a esta? (so' o nome: o log nao guarda pastas do usuario)
+            var pedidoDoPipe = PedidoDeAbertura.DoPipe(linha);
+            Logar("ABRIR pedido recebido pelo pipe: " + (pedidoDoPipe is null ? "ilegivel" : pedidoDoPipe.Modo + " " + Path.GetFileName(pedidoDoPipe.Caminho)));
+            if (pedidoDoPipe is { } p) _ = AbrirSeguroAsync(p);
+        });
         // O app aberto de novo SEM arquivo (menu Iniciar) enquanto este processo esta' vivo (fix round 1 da Task 5).
+        _instancia.RejeicaoRecebida += c => Dispatcher.BeginInvoke(() => MostrarErroNaBoasVindas(_perfil.MensagemNaoAbre(c)));
         _instancia.AtivacaoRecebida += () => Dispatcher.BeginInvoke(AoPedirAtivacao);
-        if (!InstanciaUnica.DeveContinuar(() => _instancia.TentarAssumir(caminho), LogarErro))
+        if (!InstanciaUnica.DeveContinuar(() => _instancia.TentarAssumir(pedido?.ParaPipe() ?? (rejeitado is null ? null : PedidoDeAbertura.RejeicaoParaPipe(rejeitado))), LogarErro))
         {
             Shutdown();
             return;
@@ -251,16 +267,23 @@ public abstract class AplicativoOffice : Application
         // espera o envio terminar (sem janela nenhuma), ate' ImpressoesEmCurso.LimiteDeEspera.
         _impressoes = new ImpressoesEmCurso(EncerrarAgora, Logar);
         _janelas = new GerenteDeJanelas(CriarJanela, MostrarBoasVindas, EsconderBoasVindas, Encerrar);
+        // Jump List do icone na barra de tarefas (Task 10): fixados numa categoria propria + os Recentes do Windows.
+        AtualizarJumpList();
 
         // (5) Sem arquivo: boas-vindas. Com arquivo: abre direto (nunca pisca a boas-vindas antes).
-        if (caminho is null) _janelas.MostrarBoasVindasSeVazio();
+        if (pedido is null)
+        {
+            _janelas.MostrarBoasVindasSeVazio();
+            // FMT-05: um arquivo que este app nao abre (Abrir com, associacao antiga) nao some mais em silencio.
+            if (rejeitado is not null) MostrarErroNaBoasVindas(_perfil.MensagemNaoAbre(rejeitado));
+        }
         else
         {
             // Aberto direto: a boas-vindas (onde mora "Documentos recuperados") nao aparece. Se uma sessao
             // anterior caiu com trabalho nao salvo deste app, a janela do documento avisa (Task 3 do Plano 3).
             var n = ListarRecuperaveis().Count;
             if (n > 0) _avisoRecuperaveis = TextoAvisoRecuperaveis(_perfil, n);
-            _ = AbrirSeguroAsync(caminho);
+            _ = AbrirSeguroAsync(pedido);
         }
     }
 
@@ -291,12 +314,15 @@ public abstract class AplicativoOffice : Application
     /// nenhum deles, o aviso de recuperaveis pendente, que so' entao e' CONSUMIDO (o segundo valor). Pura, para teste.
     /// </summary>
     internal static (string? Aviso, bool ConsumiuRecuperaveis) AvisoAoFicarPronto(bool midiasIndisponiveis, string? ultimoErro,
-        bool recuperadoSemSenha, bool originalAlterado, string? avisoRecuperaveis)
+        bool recuperadoSemSenha, bool originalAlterado, string? avisoRecuperaveis, IReadOnlyList<string> avisosDeAbertura)
     {
         var avisos = new List<string>();
         if (midiasIndisponiveis && !string.IsNullOrWhiteSpace(ultimoErro)) avisos.Add(ultimoErro.Trim());
         if (recuperadoSemSenha) avisos.Add(JanelaEditor.AvisoProtegidoRecuperado);
         if (originalAlterado) avisos.Add(JanelaEditor.AvisoOriginalAlterado);
+        // Plano 6: avisos de abertura (somente leitura, compatibilidade, assinatura, macros...), TODOS, na ordem de prioridade do nucleo, depois
+        // dos de recuperacao (revisao final do Plano 6: so' o 1o aparecia — um documento assinado E somente leitura escondia a assinatura).
+        avisos.AddRange(avisosDeAbertura.Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim()));
         if (avisos.Count > 0) return (string.Join(" ", avisos.Select(a => char.IsLetterOrDigit(a[^1]) ? a + "." : a)), false);
         return (avisoRecuperaveis, true);
     }
@@ -338,6 +364,9 @@ public abstract class AplicativoOffice : Application
     /// usuario apagar um documento que esta' aberto e bem.</summary>
     internal static string MensagemErroAoRecuperar(Exception ex) =>
         ex is InvalidOperationException ? ex.Message : $"Não foi possível recuperar o documento: {ex.Message}";
+
+    /// <summary>"Nao salvos recentemente" DESTE app: as pastas que o "Nao salvar" guardou nos descartados (mesmo formato da recuperacao).</summary>
+    private IReadOnlyList<DocumentoRecuperavel> ListarNaoSalvos() => Recuperaveis.Listar(Pastas.Descartados, _perfil.Nome);
 
     /// <summary>"Descartar" da boas-vindas (depois do "Sim" na pergunta, que e' do VM).</summary>
     private static void DescartarRecuperavel(DocumentoRecuperavel d) => Recuperaveis.Descartar(d.Pasta);
@@ -394,18 +423,44 @@ public abstract class AplicativoOffice : Application
     /// que garante que fechar a janela durante o carregamento seja visto pela politica (revisao 1).
     /// </summary>
     private IJanelaDocumento CriarJanela(string? caminho) =>
-        CriarJanela(j => caminho is null ? j.NovoAsync(_perfil.FormatoNovo) : j.AbrirAsync(caminho));
+        CriarJanela(j => caminho is null ? j.NovoAsync(FormatoDoNovo(_perfil, _config.FormatoOdf)) : j.AbrirAsync(caminho));
+
+    /// <summary>So' um dos temas conhecidos do motor vai para a janela (um config.json editado a mao nao injeta nada na URL).</summary>
+    internal static string? TemaEditorValido(string? id) => id is not null && TemasDoEditor.Conhecidos.Contains(id) ? id : null;
+
+    /// <summary>Formato do documento novo: o OOXML do app, ou o OpenDocument irmao quando as Configuracoes pedem (Plano 6, Task 4).</summary>
+    internal static FormatoDocumento FormatoDoNovo(PerfilApp perfil, bool odf) => !odf ? perfil.FormatoNovo : perfil.FormatoNovo switch
+    {
+        FormatoDocumento.Docx => FormatoDocumento.Odt,
+        FormatoDocumento.Xlsx => FormatoDocumento.Ods,
+        FormatoDocumento.Pptx => FormatoDocumento.Odp,
+        var f => f,
+    };
 
     /// <param name="carregar">O que a janela carrega: abrir um arquivo, criar um documento novo ou reabrir uma
     /// pasta de recuperacao.</param>
     private IJanelaDocumento CriarJanela(Func<JanelaEditor, Task> carregar)
     {
+        JanelaEditor? dona = null; // o dialogo do link precisa da janela como dona; ConfirmarLink e' init, entao captura-se a variavel
         var j = new JanelaEditor(_perfil.Nome)
         {
             NomeApp = _perfil.NomeExibicao,
             Tema = _tema.TemaDoEditor,
+            TemaId = TemaEditorValido(_config.TemaEditorId),
+            Autor = Autor.DoWindows(_config.NomeUsuario),
+            PastaInicialDoNovo = _config.PastaPadraoSalvar,
             PerguntarAoFechar = DialogoFechar.PerguntarAsync,
+            // Plano 6, Task 5: arquivo em uso ao abrir e conflito ao salvar, com os dialogos da casca.
+            PerguntarEmUso = DialogoConflito.PerguntarEmUsoAsync,
+            PerguntarConflito = DialogoConflito.PerguntarAsync,
+            // Plano 6, Task 6: link do documento so' abre no navegador padrao depois deste dialogo da casca.
+            ConfirmarLink = uri => DialogoConflito.ConfirmarLink(dona!, uri),
+            // Plano 6, Task 8: "Abrir recente" do menu Arquivo do editor com os recentes DESTE app (o nucleo nao conhece o arquivo).
+            FonteDeRecentes = () => _recentes.Listar().Select(i => i.Caminho).ToList(),
+            // Fix 1 da revisao da Task 8: vinculo externo da planilha so' le' o arquivo depois deste dialogo (padrao Nao).
+            ConfirmarVinculo = m => DialogoConflito.ConfirmarVinculo(dona!, m),
         };
+        dona = j;
         if (IconeDoApp() is { } icone) j.Icon = icone;
 
         // Acima do editor, SO' a faixa de aviso (invisivel sem aviso). A barra de comandos saiu a pedido do
@@ -419,8 +474,8 @@ public abstract class AplicativoOffice : Application
         {
             // DocumentoPronto chega DENTRO da chamada sincrona do JS (doc do nucleo): gravar recentes e
             // mexer na faixa sai pela fila do Dispatcher, nunca ali dentro.
-            if (j.SessaoAtual is { Novo: false } s) _recentes.Registrar(s.ArquivoOrigem);
-            var (aviso, consumiu) = AvisoAoFicarPronto(j.MidiasIndisponiveis, j.UltimoErro, j.RecuperadoSemSenha, j.OriginalAlteradoDepoisDaQueda, _avisoRecuperaveis);
+            if (j.SessaoAtual is { Novo: false } s) RegistrarRecente(s.ArquivoOrigem);
+            var (aviso, consumiu) = AvisoAoFicarPronto(j.MidiasIndisponiveis, j.UltimoErro, j.RecuperadoSemSenha, j.OriginalAlteradoDepoisDaQueda, _avisoRecuperaveis, j.AvisosDeAbertura);
             avisoVm.Aviso = aviso;
             if (consumiu) _avisoRecuperaveis = null;
         });
@@ -429,7 +484,7 @@ public abstract class AplicativoOffice : Application
         // entao um documento novo gravado por Ctrl+S nunca aparecia na lista. O nucleo ja' separa
         // exportacao de salvamento (PDF dispara Exportado, nao Salvo); o filtro aqui e' a segunda camada,
         // pelo formato que ESTE app abre — ver DeveRegistrarRecente.
-        j.Salvo += c => { if (DeveRegistrarRecente(_perfil, c)) _recentes.Registrar(c); };
+        j.Salvo += c => { if (DeveRegistrarRecente(_perfil, c)) RegistrarRecente(c); };
         // "Salvar" no dialogo de fechar que NAO deu certo (achado da revisao final do Plano 2): sem esta
         // linha o usuario clicava em Salvar, a janela continuava aberta e NADA explicava por que — a razao
         // so' existia no UltimoErro e no .log. A mensagem ja' vem em pt-BR do nucleo; a casca so' a mostra
@@ -464,8 +519,8 @@ public abstract class AplicativoOffice : Application
         // aqui: a faixa diz por que, em vez de nada acontecer.
         j.AbrirPedido += c => Dispatcher.BeginInvoke(() =>
         {
-            if (_perfil.Aceita(c)) _ = AbrirSeguroAsync(c);
-            else AvisarNaBarra(j, $"O {_perfil.NomeExibicao} não abre arquivos {Path.GetExtension(c).TrimStart('.').ToUpperInvariant()}: abra-o pelo aplicativo do mOffice correspondente.");
+            if (_perfil.Aceita(c) || _perfil.AbrePdfComoDocumento(c)) _ = AbrirSeguroAsync(new PedidoDeAbertura(c, ModoAbertura.Abrir));
+            else AvisarNaBarra(j, _perfil.MensagemNaoAbre(c));
         });
 
         // Reabertura recuperada que NAO conseguiu reaplicar as alteracoes (Task 2/3 do Plano 3): a janela se
@@ -482,6 +537,23 @@ public abstract class AplicativoOffice : Application
         // recuperacao — a mensagem do nucleo ja' diz para usar Recuperar.
         j.AlteracoesNaoGravadas += (_, m) => { Logar("ALTERACOES " + m); falha.AoFalhar(m, sufixoDeRecuperacao: false); };
         j.Fechado += falha.AoFechar;
+        // Plano 6, Task 7 (SO-07, SO-05): atalhos do Office tratados pela casca; posicao da janela (maximizada ou como o usuario deixou).
+        j.AtalhoRecebido += a =>
+        {
+            if (a == AcaoDeAtalho.Abrir) _ = EscolherEAbrirAsync(j);
+            else if (a == AcaoDeAtalho.ProximaJanela && adaptada is not null) _janelas.ProximaDepois(adaptada)?.Ativar();
+        };
+        var janelaAtiva = Application.Current.Windows.OfType<JanelaEditor>().Where(w => !ReferenceEquals(w, j) && w.IsVisible && !w.EmTelaCheia)
+            .OrderByDescending(w => w.IsActive).FirstOrDefault();
+        var dpi = janelaAtiva is null ? 1.0 : VisualTreeHelper.GetDpi(janelaAtiva).DpiScaleX;
+        PosicaoDeJanela.Aplicar(j, PosicaoDeJanela.Proxima(_config.Posicao(_perfil.Nome), janelaAtiva is null ? null : PosicaoDeJanela.Ler(janelaAtiva), (int)(26 * dpi)));
+        // Lembra onde a janela ficou ao FECHAR de verdade (nao cancelado). O nucleo ja saiu da tela cheia no proprio Closing (que roda antes), entao a
+        // posicao lida e a de antes da tela cheia.
+        j.Closing += (_, e) =>
+        {
+            if (e.Cancel || j.EmTelaCheia) return;
+            if (PosicaoDeJanela.Ler(j) is { } p) { try { _config.DefinirPosicao(_perfil.Nome, p); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Logar("POSICAO nao gravada: " + ex.Message); } }
+        };
         j.Show();
 
         adaptada = new JanelaAdaptada(j, () => carregar(j));
@@ -610,15 +682,36 @@ public abstract class AplicativoOffice : Application
     /// de abertura do app (linha de comando, pipe da segunda instancia, boas-vindas, barra, comando do
     /// editor): uma excecao solta em qualquer um deles vira excecao nao tratada do Dispatcher — app abaixo
     /// por um arquivo corrompido.</summary>
-    private async Task AbrirSeguroAsync(string caminho)
+    private Task AbrirSeguroAsync(string caminho) => AbrirSeguroAsync(new PedidoDeAbertura(caminho, ModoAbertura.Abrir));
+
+    /// <summary>Abre o pedido pelo modo: <c>Abrir</c> pelo gerente (reativa a janela do mesmo arquivo); <c>NovoDoModelo</c> e
+    /// <c>Apresentar</c> sempre em janela nova, com a carga propria da janela (Plano 6, Task 2).</summary>
+    private async Task AbrirSeguroAsync(PedidoDeAbertura pedido)
     {
+        var caminho = pedido.Caminho;
+        // M5 (backlog 72): diagnostico da entrada (o pedido some entre o pipe e a janela?).
+        Logar($"ABRIR {pedido.Modo} {Path.GetFileName(caminho)} (encerrando={_encerrando}, janelas={_janelas?.Abertas ?? 0})");
         // O app ja' esta' encerrando (a ultima janela fechou): abrir agora criaria uma janela que o WPF
         // recusa mostrar. Acontece de verdade — um caminho chega pelo pipe da segunda instancia no mesmo
         // instante em que a primeira fecha a ultima janela.
         if (_encerrando) return;
         _impressoes.Cancelar(); // aberto pelo usuario durante a espera das impressoes: o app segue
         DesarmarAtualizacao("o usuario abriu um arquivo");
-        try { await _janelas.AbrirAsync(caminho); }
+        try
+        {
+            switch (pedido.Modo)
+            {
+                case ModoAbertura.NovoDoModelo: await _janelas.AbrirPorAsync(() => CriarJanela(j => j.NovoDoModeloAsync(caminho))); break;
+                case ModoAbertura.Apresentar: await _janelas.AbrirPorAsync(() => CriarJanela(j => j.AbrirEApresentarAsync(caminho))); break;
+                // FMT-07: PDF no mTexto (pelo Abrir/soltar) converte em documento editavel, depois da confirmacao da janela.
+                case ModoAbertura.Abrir when _perfil.AbrePdfComoDocumento(caminho):
+                    await _janelas.AbrirPorAsync(() => CriarJanela(j => j.AbrirPdfComoDocumentoAsync(caminho))); break;
+                default: await _janelas.AbrirAsync(caminho); break;
+            }
+        }
+        // O usuario recusou a conversao do PDF: o gerente ja' fechou a janela; nao e' erro — so' volta para a boas-vindas se nao sobrou nada.
+        // Idem para "Cancelar" na pergunta do arquivo em uso (Plano 6, Task 5).
+        catch (Exception ex) when (ex is JanelaEditor.ConversaoDePdfRecusadaException or JanelaEditor.AberturaEmUsoCanceladaException) { _janelas.MostrarBoasVindasSeVazio(); }
         catch (Exception ex) { LogarErro(ex); MostrarErroNaBoasVindas($"Não foi possível abrir o arquivo: {ex.Message}"); }
     }
 
@@ -629,6 +722,19 @@ public abstract class AplicativoOffice : Application
         DesarmarAtualizacao("o usuario criou um documento");
         try { await _janelas.NovoAsync(); }
         catch (Exception ex) { LogarErro(ex); MostrarErroNaBoasVindas($"Não foi possível criar o documento: {ex.Message}"); }
+    }
+
+    /// <summary>Novo documento a partir de um modelo da galeria: janela nova com a COPIA do modelo (Task 2); o modelo nunca e' o destino do Salvar.</summary>
+    private Task NovoDoModeloSeguroAsync(string caminho) => AbrirSeguroAsync(new PedidoDeAbertura(caminho, ModoAbertura.NovoDoModelo));
+
+    /// <summary>A galeria: modelos da pasta configurada (Configuracoes → Modelos; padrao %APPDATA%\Microsoft\Templates) e os do motor.
+    /// Roda fora da thread da tela (a boas-vindas poe tempo limite); sem motor ou com pasta inacessivel, lista o que houver.</summary>
+    private IReadOnlyList<ModeloDisponivel> ListarModelos()
+    {
+        var pastaMotor = "";
+        try { pastaMotor = Path.Combine(ConfiguracaoMotor.Localizar().PastaMotor, "converter", "templates", "PT"); }
+        catch (ErroConversao) { } // sem motor: so' os modelos do usuario
+        return ModelosDisponiveis.Listar(_perfil.DocType, _config.PastaModelosEfetiva, pastaMotor);
     }
 
     // ---------------------------------------------------------------------------------------------------
@@ -648,7 +754,11 @@ public abstract class AplicativoOffice : Application
                 recuperaveis: ListarRecuperaveis,
                 recuperar: RecuperarSeguroAsync,
                 descartar: DescartarRecuperavel,
-                confirmarDescarte: d => TelaBoasVindasViewModel.ConfirmarDescarteNoSistema(_boasVindas, d));
+                confirmarDescarte: d => TelaBoasVindasViewModel.ConfirmarDescarteNoSistema(_boasVindas, d),
+                modelos: ListarModelos,
+                novoDoModelo: NovoDoModeloSeguroAsync,
+                naoSalvos: ListarNaoSalvos);
+            _vmBoasVindas.RecentesAlterados += AtualizarJumpList;
             _boasVindas = new JanelaBoasVindas(_vmBoasVindas, _perfil.ChaveLogo);
             if (IconeDoApp() is { } icone) _boasVindas.Icon = icone;
             AdicionarAoMenuDaJanela(_boasVindas);
@@ -659,6 +769,15 @@ public abstract class AplicativoOffice : Application
         _avisoRecuperaveis = null;   // a propria boas-vindas mostra a lista: o aviso da faixa ficou redundante
         _boasVindas.Show();
         _boasVindas.Activate();
+    }
+
+    /// <summary>O <c>create:new</c> do "Criar a partir de modelo" do web-apps leva <c>"template:word"</c> (ou cell/slide); o "Documento em branco" nao.</summary>
+    internal static bool PedeModelo(string? json) => json?.TrimStart().StartsWith("template:", StringComparison.Ordinal) == true;
+
+    private async Task MostrarGaleriaDeModelosAsync()
+    {
+        MostrarBoasVindas();
+        if (_vmBoasVindas is { } vm) await vm.MostrarModelosAsync();
     }
 
     private void EsconderBoasVindas() => _boasVindas?.Hide();
@@ -686,7 +805,7 @@ public abstract class AplicativoOffice : Application
 
     /// <summary>
     /// O app foi aberto de novo SEM arquivo (menu Iniciar) com este processo vivo (fix round 1 da Task 5). Com
-    /// documento aberto nada muda (a janela ja' esta' na tela; comportamento de antes). Sem documento — o app
+    /// documento aberto mostra a boas-vindas (a tela inicial do Office; a janela do documento continua aberta). Sem documento — o app
     /// esperando impressoes para encerrar, ou so' a boas-vindas — cancela a espera e mostra a boas-vindas: sem isto o
     /// usuario abriria o app e nada apareceria (o processo vivo, invisivel, engolia o pedido).
     /// </summary>
@@ -694,7 +813,8 @@ public abstract class AplicativoOffice : Application
     {
         if (_encerrando) return;
         DesarmarAtualizacao("o app foi aberto de novo");
-        if (_janelas.Abertas > 0) { Logar("ATIVACAO pedida pela segunda instancia com documento aberto (ignorada)"); return; }
+        // Plano 6, Task 7 (A14): com documento aberto, abrir o app de novo traz a tela inicial (como a tela Inicio do Office) em vez de nao fazer nada.
+        if (_janelas.Abertas > 0) { Logar("ATIVACAO com documento aberto: mostra a tela inicial"); MostrarBoasVindas(); return; }
         _impressoes.Cancelar();
         _janelas.MostrarBoasVindasSeVazio();
     }
@@ -726,8 +846,36 @@ public abstract class AplicativoOffice : Application
     private string? EscolherArquivoParaAbrir(Window? dono)
     {
         var d = new OpenFileDialog { Filter = _perfil.FiltroAbrir, CheckFileExists = true, Multiselect = false };
+        // Ate' 5 pastas dos recentes na barra lateral do dialogo (Task 10). So' a forma do caminho: nenhuma existencia e' verificada aqui (UNC fora do ar travaria a tela).
+        foreach (var pasta in PastasDosRecentes(_recentes.Listar().Select(i => i.Caminho))) d.CustomPlaces.Add(new FileDialogCustomPlace(pasta));
         var ok = dono is null ? d.ShowDialog() : d.ShowDialog(dono);
         return ok == true ? d.FileName : null;
+    }
+
+    /// <summary>Ate' <paramref name="limite"/> pastas DISTINTAS (sem diferenciar maiusculas), na ordem dos recentes, so' as de caminho local (<c>C:\x</c>) ou UNC bem formado
+    /// (<c>\\servidor\compartilhamento\...</c>). Sem acesso a disco: a existencia nao e' verificada.</summary>
+    internal static IReadOnlyList<string> PastasDosRecentes(IEnumerable<string> caminhos, int limite = 5)
+    {
+        var pastas = new List<string>();
+        foreach (var c in caminhos)
+        {
+            string? pasta;
+            try { pasta = Path.GetDirectoryName(c); } catch (ArgumentException) { continue; }
+            if (string.IsNullOrEmpty(pasta) || !PastaBemFormada(pasta)) continue;
+            if (pastas.Any(p => string.Equals(p, pasta, StringComparison.OrdinalIgnoreCase))) continue;
+            pastas.Add(pasta);
+            if (pastas.Count >= limite) break;
+        }
+        return pastas;
+    }
+
+    private static bool PastaBemFormada(string pasta)
+    {
+        if (pasta.Length >= 3 && char.IsAsciiLetter(pasta[0]) && pasta[1] == ':' && pasta[2] == '\\') return true;
+        // UNC: \\servidor\compartilhamento[\...] (nao os prefixos \\?\ e \\.\).
+        if (!pasta.StartsWith(@"\\", StringComparison.Ordinal) || pasta.StartsWith(@"\\?", StringComparison.Ordinal) || pasta.StartsWith(@"\\.", StringComparison.Ordinal)) return false;
+        var partes = pasta[2..].Split('\\');
+        return partes.Length >= 2 && partes[0].Length > 0 && partes[1].Length > 0;
     }
 
     private async Task EscolherEAbrirAsync(Window? dono)
@@ -750,6 +898,45 @@ public abstract class AplicativoOffice : Application
     /// <summary>Texto da faixa quando o envio para a impressora falhou (separado para teste). As mensagens do
     /// nucleo ja' vem em pt-BR e com o nome da impressora.</summary>
     internal static string MensagemErroAoEnviar(string mensagem) => "Não foi possível imprimir: " + mensagem;
+
+    /// <summary>Registra o arquivo nos recentes do app E nos Recentes do Windows (SHAddToRecentDocs), e refaz a Jump List. So' chamado para documento do usuario aberto ou
+    /// salvo — nunca para modelo usado como novo nem para documento novo (Task 9: <c>Novo: false</c>).</summary>
+    private void RegistrarRecente(string caminho)
+    {
+        // I2 da revisao final do Plano 6: chamado pelo DocumentoPronto/Salvo via BeginInvoke — uma excecao aqui (recentes-x.json somente
+        // leitura, shell indisponivel) derrubava o app inteiro com documentos abertos. Recentes e' conveniencia: falha vira log.
+        try
+        {
+            _recentes.Registrar(caminho);
+            IntegracaoWindows.AdicionarAosRecentesDoWindows(caminho);
+            AtualizarJumpList();
+        }
+        catch (Exception ex) { Logar("RECENTES nao registrado (" + Path.GetFileName(caminho) + "): " + ex.Message); }
+    }
+
+    private void AtualizarJumpList()
+    {
+        try { IntegracaoWindows.Aplicar(this, _recentes.Listar()); }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException) { Logar("JUMPLIST nao atualizada: " + ex.Message); }
+    }
+
+    /// <summary>/imprimir: envia o arquivo para a impressora padrao e encerra o processo com 0 (ok) ou 20 (erro).</summary>
+    private async Task ImprimirEEncerrarAsync(string caminho)
+    {
+        var codigo = ImpressaoDireta.Erro;
+        try { codigo = await ImpressaoDireta.ImprimirAsync(caminho, _perfil.Nome, log: Logar,
+            avisar: m => AvisarSemJanela(m, _perfil.NomeExibicao)); }
+        catch (Exception ex) { LogarErro(ex); }
+        finally { _encerrando = true; Shutdown(codigo); }
+    }
+
+    /// <summary>Aviso do verbo /imprimir (processo sem janela nenhuma): um MessageBox sem dono nasce ATRAS da janela ativa (o Explorer, de onde
+    /// o usuario clicou "Imprimir") e parece que nada aconteceu. <see cref="MessageBoxOptions.DefaultDesktopOnly"/> o poe na frente (topmost,
+    /// na area de trabalho ativa).</summary>
+    internal const MessageBoxOptions OpcoesDoAvisoSemJanela = MessageBoxOptions.DefaultDesktopOnly;
+
+    private static void AvisarSemJanela(string mensagem, string titulo) =>
+        MessageBox.Show(mensagem, titulo, MessageBoxButton.OK, MessageBoxImage.Warning, MessageBoxResult.OK, OpcoesDoAvisoSemJanela);
 
     private static void AvisarNaBarra(JanelaEditor j, string mensagem)
     {
@@ -818,6 +1005,9 @@ public abstract class AplicativoOffice : Application
         switch (c.Comando)
         {
             case "create:new":
+                // "Criar a partir de modelo" do editor manda "template:word|cell|slide": leva a' galeria da boas-vindas
+                // (Plano 6, Task 9). Qualquer outro valor (o "Documento em branco") cria o documento em branco.
+                if (PedeModelo(c.Json)) { _ = MostrarGaleriaDeModelosAsync(); return; }
                 _ = NovoSeguroAsync();
                 return;
 
@@ -826,7 +1016,13 @@ public abstract class AplicativoOffice : Application
                 // campo e' `path`; `url` fica como reserva para as telas que usam o nome do modelo.
                 var recente = CampoDeTexto(c.Json, "path") ?? CampoDeTexto(c.Json, "url");
                 if (recente is null) { Logar($"COMANDO open:recent sem caminho: {c.Json}"); return; }
-                _ = AbrirSeguroAsync(recente);
+                // Fix 1 da revisao da Task 8 (seguranca): o caminho vem da PAGINA. So' abre o que esta' nos recentes deste app.
+                if (RecenteDaLista(recente, _recentes.Listar().Select(i => i.Caminho)) is not { } daLista)
+                {
+                    Logar("COMANDO open:recent ignorado (caminho fora da lista de recentes): " + recente);
+                    return;
+                }
+                _ = AbrirSeguroAsync(daLista);
                 return;
 
             case "recent:forget":
@@ -835,8 +1031,10 @@ public abstract class AplicativoOffice : Application
                 // esquecer, nao se apaga nada: limpar a lista inteira por um comando ambiguo seria perder
                 // dado do usuario. So' registra (e, quando um dia vier com caminho, funciona).
                 if (alvo is null) { Logar("COMANDO recent:forget sem caminho (ignorado)"); return; }
-                _recentes.Remover(alvo);
+                try { _recentes.Remover(alvo); }
+                catch (Exception ex) { Logar("RECENTES nao removido: " + ex.Message); }   // I2: nunca derruba o app
                 _vmBoasVindas?.Recarregar();
+                AtualizarJumpList();
                 return;
 
             case "editor:event":
@@ -846,6 +1044,23 @@ public abstract class AplicativoOffice : Application
                     case "file:close": j.Close(); return;
                     default: Logar($"COMANDO editor:event nao tratado: {c.Json}"); return;
                 }
+
+            case "go:folder":
+                // "Abrir Local do Arquivo" do menu Arquivo (Plano 6, Task 8): o web-apps manda execCommand("go:folder", "offline").
+                // Documento novo/desvinculado nao tem o item (goback sem url, ponte-desktop.js); aqui so' com arquivo em disco.
+                if (j.SessaoAtual is { Novo: false } s)
+                {
+                    try { System.Diagnostics.Process.Start(ComandoAbrirPasta(s.ArquivoOrigem))?.Dispose(); }
+                    catch (Exception ex) { Logar("COMANDO go:folder falhou: " + ex.Message); }
+                }
+                return;
+
+            case "uitheme:changed":
+                // O usuario trocou o tema DENTRO do editor: lembra (so' vale para janelas novas). "theme-system" e ids
+                // desconhecidos viram null = volta a valer o tema do mOffice.
+                try { _config.TemaEditorId = TemaDoComando(c.Json); }
+                catch (Exception ex) { Logar("CONFIG tema do editor nao gravado: " + ex.Message); }   // I2: nunca derruba o app
+                return;
 
             default:
                 // So' o que NAO e' ruido conhecido (achado da revisao final do Plano 2): antes, todo
@@ -857,6 +1072,30 @@ public abstract class AplicativoOffice : Application
         }
     }
 
+    /// <summary>O item de <paramref name="lista"/> (recentes do app) igual a <paramref name="pedido"/> — caminho totalmente qualificado, comparado
+    /// depois de <see cref="Path.GetFullPath(string)"/> e sem diferenca de caixa —, ou <c>null</c>. So' texto: nenhuma E/S no caminho pedido.</summary>
+    internal static string? RecenteDaLista(string pedido, IEnumerable<string> lista)
+    {
+        string alvo;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(pedido) || !Path.IsPathFullyQualified(pedido)) return null;
+            alvo = Path.GetFullPath(pedido);
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
+        foreach (var item in lista)
+        {
+            try { if (Path.IsPathFullyQualified(item) && string.Equals(Path.GetFullPath(item), alvo, StringComparison.OrdinalIgnoreCase)) return item; }
+            catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException) { }
+        }
+        return null;
+    }
+
+    /// <summary>"Abrir Local do Arquivo": o Explorer com o arquivo selecionado (<c>explorer.exe /select,"&lt;arquivo&gt;"</c>). `internal`: testado sem
+    /// abrir o Explorer.</summary>
+    internal static System.Diagnostics.ProcessStartInfo ComandoAbrirPasta(string arquivo) =>
+        new("explorer.exe", $"/select,\"{arquivo}\"") { UseShellExecute = false };
+
     /// <summary>Comandos de UI do web-apps que chegam SEMPRE e que a casca nao trata de proposito: handshake
     /// de inicializacao (<c>webapps:entry</c>, <c>webapps:features</c>, <c>editor:config</c>,
     /// <c>editor:onready</c>, <c>doc:onready</c>) e estado de interface (<c>quickaccess:changed</c>,
@@ -865,7 +1104,7 @@ public abstract class AplicativoOffice : Application
     internal static readonly IReadOnlySet<string> ComandosSilenciosos = new HashSet<string>(StringComparer.Ordinal)
     {
         "webapps:entry", "webapps:features", "editor:config", "editor:onready", "doc:onready",
-        "quickaccess:changed", "uitheme:changed",
+        "quickaccess:changed",
     };
 
     /// <summary>Familias inteiras de comando que sao ruido: a barra de titulo customizada
@@ -880,6 +1119,11 @@ public abstract class AplicativoOffice : Application
     internal static bool EhRuidoConhecido(string comando) =>
         ComandosSilenciosos.Contains(comando)
         || PrefixosSilenciosos.Any(p => comando.StartsWith(p, StringComparison.Ordinal));
+
+    /// <summary>Id do tema do <c>uitheme:changed</c> (<c>{"name":"theme-white","type":"light"}</c>) se for um dos 7 do motor;
+    /// <c>null</c> para <c>theme-system</c> (o mOffice nao acompanha o tema do SO dentro do editor) e para qualquer outro nome.</summary>
+    internal static string? TemaDoComando(string json) =>
+        CampoDeTexto(json, "name") is { } nome && TemasDoEditor.Conhecidos.Contains(nome) ? nome : null;
 
     /// <summary>Le um campo string de um JSON de comando; null se o parametro nao for objeto JSON ou o campo
     /// nao existir/nao for string. Nunca lanca: o que chega aqui veio do editor, nao do nosso codigo.</summary>

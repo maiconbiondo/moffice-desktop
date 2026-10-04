@@ -1,0 +1,4 @@
+Fixtures SINTETICAS do Plano 6 (Task 2): amostra.doc, amostra.xls e amostra.ppt.
+Geradas pelo LibreOffice (conversao de .docx/.xlsx/.pptx sinteticos criados por script, na auditoria de 2026-10-01).
+Nada vem de poc/amostras nem de documento real de usuario. Servem para provar que o mOffice abre o formato legado
+em Modo de compatibilidade e que o primeiro Salvar vira "Salvar como" em OOXML sem tocar no original.

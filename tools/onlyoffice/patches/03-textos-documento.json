@@ -1,0 +1,71 @@
+{
+  "descricao": "Textos do mTexto como no Word pt-BR (Plano 6, Task 9; achados A8/PL-11): estilos de titulo 'Titulo N' (o motor traz 'Cabecalho N'), e tres textos que ficaram em ingles no pt.json do motor.",
+  "versaoMotor": "9.4.0.129",
+  "arquivos": [
+    {
+      "arquivo": "editors/web-apps/apps/documenteditor/main/locale/pt.json",
+      "trocas": [
+        {
+          "de": "\"DE.Controllers.Main.txtStyle_Heading_1\":\"Cabeçalho 1\"",
+          "para": "\"DE.Controllers.Main.txtStyle_Heading_1\":\"Título 1\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Main.txtStyle_Heading_2\":\"Cabeçalho 2\"",
+          "para": "\"DE.Controllers.Main.txtStyle_Heading_2\":\"Título 2\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Main.txtStyle_Heading_3\":\"Cabeçalho 3\"",
+          "para": "\"DE.Controllers.Main.txtStyle_Heading_3\":\"Título 3\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Main.txtStyle_Heading_4\":\"Cabeçalho 4\"",
+          "para": "\"DE.Controllers.Main.txtStyle_Heading_4\":\"Título 4\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Main.txtStyle_Heading_5\":\"Cabeçalho 5\"",
+          "para": "\"DE.Controllers.Main.txtStyle_Heading_5\":\"Título 5\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Main.txtStyle_Heading_6\":\"Cabeçalho 6\"",
+          "para": "\"DE.Controllers.Main.txtStyle_Heading_6\":\"Título 6\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Main.txtStyle_Heading_7\":\"Cabeçalho 7\"",
+          "para": "\"DE.Controllers.Main.txtStyle_Heading_7\":\"Título 7\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Main.txtStyle_Heading_8\":\"Cabeçalho 8\"",
+          "para": "\"DE.Controllers.Main.txtStyle_Heading_8\":\"Título 8\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Main.txtStyle_Heading_9\":\"Cabeçalho 9\"",
+          "para": "\"DE.Controllers.Main.txtStyle_Heading_9\":\"Título 9\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Statusbar.textTrackChanges\":\"The document is opened with the Track Changes mode enabled\"",
+          "para": "\"DE.Controllers.Statusbar.textTrackChanges\":\"O documento foi aberto com o modo Controlar Alterações ativado\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Statusbar.textHasChanges\":\"New changes have been tracked\"",
+          "para": "\"DE.Controllers.Statusbar.textHasChanges\":\"Novas alterações foram controladas\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DE.Controllers.Main.txtArt\":\"Your text here\"",
+          "para": "\"DE.Controllers.Main.txtArt\":\"Seu texto aqui\"",
+          "ocorrencias": 1
+        }
+      ]
+    }
+  ]
+}

@@ -7,6 +7,7 @@ using mOffice.Conversor;
 using mOffice.Nucleo.Impressao;
 using mOffice.Nucleo.Ortografia;
 using mOffice.Nucleo.Recuperacao;
+using mOffice.Nucleo.Travas;
 
 namespace mOffice.Nucleo;
 
@@ -83,6 +84,17 @@ public partial class JanelaEditor : Window
     /// <c>uitheme=</c> e no <c>window.RendererProcessVariable.theme</c>): `init` de proposito porque trocar o
     /// tema de uma janela JA ABERTA nao entra neste plano — uma janela nova nasce com o tema atual.</summary>
     public TemaEditor Tema { get; init; } = TemaEditor.Claro;
+
+    /// <summary>Tema do editor escolhido pelo usuario DENTRO do editor (<c>theme-white</c>, <c>theme-night</c>…), lembrado
+    /// entre sessoes (Plano 6, Task 4). <c>null</c> = o do <see cref="Tema"/> (o do mOffice).</summary>
+    public string? TemaId { get; init; }
+
+    /// <summary>Autor de comentarios e alteracoes controladas desta janela (vai na URL de entrada como
+    /// <c>userid</c>/<c>username</c>). Plano 6, Task 4: antes era "mOffice"/1 para todo mundo.</summary>
+    public Autor Autor { get; init; } = Autor.DoWindows();
+
+    /// <summary>Pasta onde o "Salvar como" de documento NOVO abre (Configuracoes &gt; Salvar). <c>null</c> = Documentos.</summary>
+    public string? PastaInicialDoNovo { get; init; }
 
     /// <summary>Conteudo WPF do host ACIMA do editor (a FaixaAviso do mOffice.Comum; a barra de comandos saiu em 2026-09-25). Propriedade
     /// de dependencia porque o <c>ContentPresenter</c> do XAML se liga a ela — com um CLR simples a barra
@@ -185,6 +197,8 @@ public partial class JanelaEditor : Window
 
     /// <summary>O fechamento ja passou pela pergunta (ou nao precisava): o <see cref="AoFechar"/> deixa passar.</summary>
     private bool _fechamentoConfirmado;
+    /// <summary>"Nao salvar" explicito de um documento NAO protegido: o <c>Closed</c> move a pasta de recuperacao para <see cref="Pastas.Descartados"/> (Task 10).</summary>
+    private bool _descartarParaRecuperar;
 
     /// <summary>Uma decisao de fechamento esta em curso (pergunta aberta ou gravacao em andamento). Enquanto
     /// for true, um novo <see cref="AoFechar"/> so' cancela o fechamento — ver o comentario la'.</summary>
@@ -404,6 +418,7 @@ public partial class JanelaEditor : Window
             // trabalho nao salvo. So' um fechamento CONFIRMADO (_fechamentoConfirmado: "Salvar" deu certo ou o
             // usuario escolheu "Nao salvar") apaga uma sessao com alteracao pendente.
             lock (_travaImpressao) _fechada = true;
+            LogarMemoria("no-fechamento");
             // Fix round 2: o segundo termo e' "ha' um salvamento em curso" (o asc_Save ja' zerou o Modificado, e o
             // arquivo ainda nao foi gravado), NAO a anotacao _edicaoNaoGravada — ela fica verdadeira depois de editar,
             // salvar, editar e desfazer ate' o estado salvo, e a pasta de um documento inteiramente salvo sobrava e
@@ -417,6 +432,13 @@ public partial class JanelaEditor : Window
                     _arquivos.Log("FECHAR sem a decisao do usuario com alteracao nao salva (encerramento do Windows ou do app): a pasta fica para recuperacao");
                 _sessao?.LiberarTrava();
             }
+            else if (_descartarParaRecuperar && _sessao is { } descartada && Recuperaveis.TemConteudo(descartada.PastaRecovery))
+            {
+                // "Nao salvar" explicito (Plano 6, Task 10 — SO-11): a pasta nao some na hora, vai para os "Nao salvos recentemente" (4 dias).
+                // Solta as duas travas ANTES (o rename da pasta nao anda com o rec.lock aberto); sem conseguir mover, apaga como sempre.
+                descartada.LiberarTrava();
+                if (Descartados.Guardar(descartada.PastaRecovery, Pastas.Descartados) is null) descartada.ApagarRecovery();
+            }
             else _sessao?.ApagarRecovery();
             string[] pdfs;
             lock (_travaImpressao) { pdfs = [.. _pdfsDeImpressao]; _pdfsDeImpressao.Clear(); }
@@ -429,8 +451,8 @@ public partial class JanelaEditor : Window
         Closing += AoFechar;
         // Tela cheia (Task 7 do Plano 3): por cima de tudo SO' enquanto ativa — um Alt+Tab durante a apresentacao
         // nao pode deixar a janela presa na frente das outras.
-        Activated += (_, _) => { if (EmTelaCheia) Topmost = true; };
-        Deactivated += (_, _) => { if (EmTelaCheia) Topmost = false; };
+        Activated += (_, _) => { if (EmTelaCheia) Topmost = true; AplicarAlvoDeMemoria(true); };
+        Deactivated += (_, _) => { if (EmTelaCheia) Topmost = false; AplicarAlvoDeMemoria(false); };
         // Rede de seguranca (fix round 1): um Esc que chegue ao WPF (tecla aceleradora que o WebView2 repassa) tambem
         // arma a saida garantida — o caminho principal e' o aviso "escTelaCheia" da ponte (ver EscNaTelaCheia).
         PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape && EmTelaCheia) EscNaTelaCheia("teclado do host"); };
@@ -440,7 +462,8 @@ public partial class JanelaEditor : Window
     /// do app. Sem documento aberto, so' o nome do app. Chamado ao abrir, ao salvar e a cada mudanca de
     /// <see cref="SessaoDocumento.Modificado"/>.</summary>
     private void AtualizarTitulo() =>
-        Title = _sessao is null ? NomeApp : $"{_sessao.Titulo}{(_sessao.Modificado ? "*" : "")} — {NomeApp}";
+        Title = _sessao is null ? NomeApp
+            : $"{_sessao.Titulo}{(_sessao.SomenteLeitura ? " (Somente leitura)" : "")}{(ModoCompatibilidade ? " [Modo de compatibilidade]" : "")}{(_sessao.Modificado ? "*" : "")} — {NomeApp}";
 
     /// <summary>
     /// Pergunta antes de descartar alteracoes. O WPF NAO espera uma continuacao assincrona dentro do
@@ -513,6 +536,12 @@ public partial class JanelaEditor : Window
                 case DecisaoFechar.Cancelar:
                     Abortado();
                     return;
+                case DecisaoFechar.NaoSalvar:
+                    // Plano 6, Task 10 (SO-11): o Closed guarda a pasta por 4 dias em vez de apagar — EXCETO documento protegido (senha em memoria ou
+                    // sessao.json "Protegido"): o Editor.bin decifrado nao pode ficar 4 dias em claro no disco. Decidido AQUI, na decisao explicita
+                    // (logoff/Shutdown nao passam por este ramo: a pasta fica na recuperacao normal).
+                    _descartarParaRecuperar = !(sessao.Senha is not null || sessao.OriginalProtegidoSemSenha is not null || sessao.Metadados?.Protegido == true);
+                    break;
                 case DecisaoFechar.Salvar:
                     try
                     {
@@ -530,11 +559,11 @@ public partial class JanelaEditor : Window
                         // Neste caminho o dialogo so' oferece formatos de DOCUMENTO.
                         // Sessao recuperada DESVINCULADA (I2 da revisao final do Plano 3): o original mudou
                         // depois da queda, entao o "Salvar" do fechamento tambem vira "Salvar como".
-                        DestinoSalvar? alvo = sessao.Novo || sessao.Desvinculada
+                        DestinoSalvar? alvo = sessao.ExigeSalvarComo
                             ? EscolherDestino(sessao.Formato, permitirExportacao: false)
                             : new DestinoSalvar(sessao.ArquivoOrigem, sessao.Formato);
                         if (alvo is null) { Abortado(); return; }  // cancelou o dialogo = cancelou o fechamento
-                        var r = await SalvarComoAsync(alvo.Caminho, alvo.Formato);
+                        var r = await SalvarComoAsync(alvo.Caminho, alvo.Formato, alvo.Texto);
                         // Defesa em profundidade: com o filtro acima isto e' inalcancavel pelo dialogo, mas se
                         // um dia outro caminho trouxer uma exportacao para ca, o fechamento NAO pode seguir —
                         // o documento editavel nao foi gravado em lugar nenhum.
@@ -632,7 +661,12 @@ public partial class JanelaEditor : Window
         wv.Settings.IsGeneralAutofillEnabled = false;
         wv.Settings.IsPasswordAutosaveEnabled = false;
         wv.Settings.AreDefaultContextMenusEnabled = true;
-        wv.Settings.AreDevToolsEnabled = true;
+        // SO-04/PL-16: em uso normal nada de DevTools (F12, Ctrl+Shift+I), nada de aceleradoras do NAVEGADOR (F5/Ctrl+R recarregar,
+        // Ctrl+F/Ctrl+P do navegador, F12) e nada de zoom da INTERFACE (Ctrl+=/Ctrl+roda). O editor continua recebendo as teclas
+        // (Ctrl+F, Ctrl+P, Ctrl+roda dele sao JS). MOFFICE_DIAGNOSTICO=1 religa tudo para diagnostico.
+        wv.Settings.AreDevToolsEnabled = Diagnostico.Ligado;
+        wv.Settings.AreBrowserAcceleratorKeysEnabled = Diagnostico.Ligado;
+        wv.Settings.IsZoomControlEnabled = false;
         // SmartScreen desligado pela CONFIGURACAO oficial da API, alem da flag de linha de comando
         // --disable-features=msSmartScreenProtection (AmbienteWebView2.Flags): fix da revisao 1, achado 2. As
         // DUAS formas juntas sao a base do aviso dispensado na Secao 8 da licenca do runtime (ver
@@ -643,6 +677,7 @@ public partial class JanelaEditor : Window
         _arquivos.Log($"WEBVIEW2 SmartScreen: IsReputationCheckingRequired={wv.Settings.IsReputationCheckingRequired}");
         Guarda.ServidorLocal = ServirAscDesktop;
         Guarda.Instalar(wv, _log);
+        InstalarLinks(wv);
         // AllFonts.js: o host o serve DIRETO do catalogo (CatalogoNoEditor — fix round 1 da Task 1 do Plano 5);
         // nada e' copiado para dentro do motor, que instalado fica em Program Files, so' leitura. Conferido
         // ANTES da navegacao e falha FECHADO (item 2 da revisao 1): sem o arquivo o modulo "allfonts" do
@@ -663,6 +698,10 @@ public partial class JanelaEditor : Window
         // Host da pagina de teste do PoC (Ponte/ponte-teste.html), usado pelo teste de fumaca; esta na lista
         // de origens permitidas da guarda (GuardaEgresso.OrigensPermitidas), senao ela mesma seria bloqueada.
         wv.SetVirtualHostNameToFolderMapping("moffice-poc.local", Path.Combine(AppContext.BaseDirectory, "Ponte"), CoreWebView2HostResourceAccessKind.Allow);
+        // Dicionarios de hifenizacao (Plano 6, Task 8): a ponte responde getDictionariesPath = https://moffice-dic.local/ e o sdkjs pede
+        // <lang>/hyph_<lang>.dic por XHR a partir de moffice.local. Pasta LOCAL do motor, so' leitura; Allow (e nao DenyCors) porque o pedido e'
+        // de outra origem. Na lista de origens da GuardaEgresso.
+        wv.SetVirtualHostNameToFolderMapping(HostDicionarios, Path.Combine(_motor.PastaMotor, "dictionaries"), CoreWebView2HostResourceAccessKind.Allow);
         // "arquivos" (LerBase64/GravarBase64/dialogos = I/O de arquivo arbitrario) NAO vai para a janela por
         // padrao (achado 1 da revisao 2026-09-17, fix review 2): o quadro do editor e' same-origin com este
         // documento de nivel superior (window.frames[0] alcanca DesktopOfflineAppDocumentEndLoad nele — ver
@@ -686,10 +725,13 @@ public partial class JanelaEditor : Window
         // vale para a vida inteira da janela.
         await wv.AddScriptToExecuteOnDocumentCreatedAsync(
             "window.__moffice = window.__moffice || {}; window.__moffice.tema = "
-            + System.Text.Json.JsonSerializer.Serialize(new { id = Tema.Id(), type = Tema.Tipo() }) + ";");
+            + System.Text.Json.JsonSerializer.Serialize(new { id = TemaId ?? Tema.Id(), type = TemaId is null ? Tema.Tipo() : TemasDoEditor.Tipo(TemaId) }) + ";");
         // Reescrita do <script src> do AllFonts.js para o host do catalogo (CatalogoNoEditor): registrada antes
         // de qualquer script da pagina rodar, em todo documento (janela de cima e quadro do editor).
         await wv.AddScriptToExecuteOnDocumentCreatedAsync(CatalogoNoEditor.ScriptReescrita);
+        // Configuracao do editor vinda do host (Plano 6, Task 6): ANTES do ponte-desktop.js (que define mesclarConfig e le esta propriedade).
+        // O patch 01 do index.html chama window.__moffice.mesclarConfig sobre o editorConfig do motor.
+        await wv.AddScriptToExecuteOnDocumentCreatedAsync("window.__moffice = window.__moffice || {}; window.__moffice.configEditor = " + ConfigEditor.Json() + ";");
         // Ordem importa: ponte-desktop.js define o objeto real; grampo.js embrulha e loga o que for chamado.
         await wv.AddScriptToExecuteOnDocumentCreatedAsync(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Ponte", "ponte-desktop.js")));
         // Grampo opt-in (Task 1 do Marco 1 / Plano 2, backlog 15): logar TODA chamada da ponte e' diagnostico,
@@ -782,15 +824,15 @@ public partial class JanelaEditor : Window
     public event Action<string>? AbrirPedido;
 
     /// <summary>Imagens aceitas ao soltar: o mesmo conjunto do filtro do dialogo "Imagem do arquivo"
-    /// (<see cref="EscolherImagemNoWindows"/>) — soltar e' escolher o arquivo com o mouse.</summary>
+    /// (<see cref="FiltrosDoEditor"/>, filtro "images") — soltar e' escolher o arquivo com o mouse.</summary>
     internal static readonly IReadOnlySet<string> ExtensoesImagemSolta = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         { ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg" };
 
-    /// <summary>Documentos que o nucleo sabe abrir (<see cref="FormatoDocumentoExtensoes.DaExtensao"/>, sem o PDF,
-    /// que e' so' exportacao). <c>.csv</c>/<c>.txt</c> do brief ficam de fora: o conversor nao os abre (divergencia
-    /// registrada no relatorio da Task 6).</summary>
-    internal static readonly IReadOnlySet<string> ExtensoesDocumentoSolto = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        { ".docx", ".odt", ".xlsx", ".ods", ".pptx", ".odp" };
+    /// <summary>Documentos que o nucleo sabe abrir (<c>Abre</c> na <see cref="TabelaFormatos"/>, TXT e CSV inclusive desde a Task 3 do Plano 6)
+    /// mais o PDF, que so' o mTexto abre (como documento editavel, <see cref="AbrirPdfComoDocumentoAsync"/>): a casca filtra pelo perfil do
+    /// app e, nos outros, mostra a faixa "o app nao abre PDF".</summary>
+    internal static readonly IReadOnlySet<string> ExtensoesDocumentoSolto =
+        new HashSet<string>(TabelaFormatos.Todas.Where(i => i.Abre).Select(i => i.Extensao).Append(".pdf"), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Mensagem da pagina (documento de cima ou quadro). So' "moffice:soltar" interessa, e so' vinda da
     /// origem do editor. Os caminhos vem de <see cref="CoreWebView2File.Path"/>, que o NAVEGADOR preenche a
@@ -1014,7 +1056,7 @@ public partial class JanelaEditor : Window
     /// "Novo documento" (Task 2 do Marco 1 / Plano 2): copia o modelo vazio que o proprio motor traz
     /// (<see cref="ModelosVazios"/>, <c>converter/empty/pt-BR</c> com reserva em <c>default</c>) para a pasta
     /// de recuperacao desta sessao e abre a copia como documento NOVO — sem arquivo de origem do usuario,
-    /// titulo generico ("Documento"/"Planilha"/"Apresentação") e "Salvar" que vira "Salvar como".
+    /// titulo generico numerado ("Documento1"/"Pasta1"/"Apresentação1") e "Salvar" que vira "Salvar como".
     ///
     /// Os formatos ODF nao tem modelo proprio no motor: usam o irmao OOXML (<c>Odt</c> -&gt; <c>new.docx</c>) e
     /// a sessao GUARDA <c>Formato = Odt</c>, para que o primeiro "Salvar como" ja sugira o filtro ODF e o x2t
@@ -1030,16 +1072,50 @@ public partial class JanelaEditor : Window
     /// <c>uitheme=</c> e' lido por <c>web-apps/apps/api/documents/index.html</c> (linha 112 da tag 9.4.0.129),
     /// que o transforma em <c>customization.uiTheme</c> da configuracao do editor.</summary>
     public static string MontarUrlDeEntrada(FormatoDocumento formato, string titulo, TemaEditor tema) =>
-        $"https://moffice.local/web-apps/apps/api/documents/index.html?placement=desktop&doctype={formato.DocType()}"
-        + $"&filetype={formato.Extensao()}&title={Uri.EscapeDataString(titulo)}&lang=pt-BR&mode=edit&userid=1&username=mOffice"
-        + $"&uitheme={tema.Id()}";
+        MontarUrlDeEntrada(formato, titulo, tema, Autor.DoWindows());
 
-    private async Task AbrirSessaoAsync(string arquivoDeEntrada, FormatoDocumento formato, bool novo)
+    /// <param name="autor">Vira <c>editorConfig.user</c> (index.html): o nome que o motor grava em comentarios e revisoes.</param>
+    /// <param name="temaId">Id do tema do editor quando o usuario escolheu um (senao o do <paramref name="tema"/>).</param>
+    /// <param name="temArquivo"><c>&amp;arquivo=1</c>: a sessao tem arquivo em disco (a ponte mantem "Abrir Local do Arquivo"); <c>0</c> = documento novo/desvinculado (a ponte o esconde).</param>
+    public static string MontarUrlDeEntrada(FormatoDocumento formato, string titulo, TemaEditor tema, Autor autor, string? temaId = null, bool temArquivo = true) =>
+        $"https://moffice.local/web-apps/apps/api/documents/index.html?placement=desktop&doctype={formato.DocType()}"
+        + $"&filetype={FileTypeDoEditor(formato)}&title={Uri.EscapeDataString(titulo)}&lang=pt-BR&mode=edit&userid={Uri.EscapeDataString(autor.Id)}&username={Uri.EscapeDataString(autor.Nome)}"
+        + $"&uitheme={Uri.EscapeDataString(temaId ?? tema.Id())}&arquivo={(temArquivo ? 1 : 0)}";
+
+    /// <summary>O <c>filetype=</c> da URL de entrada. Plano 6, Task 2 — MEDIDO ao vivo: o web-apps INICIA a apresentacao sozinho quando
+    /// enxerga um <c>ppsx</c>/<c>ppsm</c> (um .ppsx aberto pelo Abrir comum entrava em tela cheia). Sao DOIS pontos, e os dois tem de
+    /// mudar (so' um deles nao basta, medido): este <c>filetype=</c> leva o irmao de edicao (pptx/pptm) e o caminho que a ponte entrega em
+    /// <c>LocalFileGetSourcePath</c> tambem (<see cref="PonteDesktop.OrigemParaOEditor"/>). Quem quer apresentar
+    /// (<see cref="AbrirEApresentarAsync"/>) pede pela ponte, uma vez. O formato da SESSAO continua Ppsx/Ppsm (o salvar grava de volta o
+    /// .ppsx).</summary>
+    private static string FileTypeDoEditor(FormatoDocumento f) => f switch
+    {
+        FormatoDocumento.Ppsx => "pptx",
+        FormatoDocumento.Ppsm => "pptm",
+        _ => f.Extensao(),
+    };
+
+    private async Task AbrirSessaoAsync(string arquivoDeEntrada, FormatoDocumento formato, bool novo, bool apresentar = false, string? tituloDoNovo = null)
     {
         await ProntoAsync();
+        // Plano 6, Task 5 (SO-02): arquivo do usuario e' sondado ANTES de qualquer coisa — em uso por outro, pergunta (Cancelar lanca
+        // AberturaEmUsoCanceladaException sem ter criado nada); somente leitura/sem permissao abre somente leitura sem perguntar.
+        var (acesso, dono) = novo ? (EstadoAcesso.Livre, null) : await SondarAcessoAsync(arquivoDeEntrada);
+        _donoDoArquivoEmUso = dono;
         var recovery = Path.Combine(SessaoDocumento.RaizRecovery, Guid.NewGuid().ToString("N"));
         // A pasta nasce AQUI (e nao so' dentro do x2t): a trava e o sessao.json vao para ela antes da conversao.
         Directory.CreateDirectory(recovery);
+        // Em uso por outro: o x2t le' uma COPIA (lida com FileShare.ReadWrite); o ArquivoOrigem da sessao continua o original.
+        string? copia = null;
+        if (acesso == EstadoAcesso.EmUso)
+        {
+            try { copia = CopiarParaLeitura(arquivoDeEntrada, recovery); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                try { Directory.Delete(recovery, true); } catch (Exception e2) when (e2 is IOException or UnauthorizedAccessException) { }
+                throw new IOException($"O arquivo está em uso por outro programa e não pôde ser lido nem para abrir somente leitura: {e.Message}", e);
+            }
+        }
         // Documento NOVO: a origem e' uma COPIA do modelo vazio dentro da propria pasta de recuperacao — nunca
         // o modelo do motor (que e' arquivo instalado, compartilhado entre todas as janelas e todos os
         // usuarios da maquina: uma gravacao por cima dele estragaria o "novo documento" de todo mundo). Como a
@@ -1050,15 +1126,32 @@ public partial class JanelaEditor : Window
             caminho = Path.Combine(recovery, Path.GetFileName(arquivoDeEntrada));
             File.Copy(arquivoDeEntrada, caminho, true);
         }
-        var sessao = new SessaoDocumento { ArquivoOrigem = caminho, Formato = formato, PastaRecovery = recovery, Novo = novo };
+        // Plano 6, Task 2: legado abre em Modo de compatibilidade — a sessao grava no formato MODERNO do tipo e o arquivo antigo
+        // nunca e' regravado (o primeiro "Salvar" vira "Salvar como"). Modelo aberto por NovoDoModeloAsync entra com `novo: true`.
+        var info = TabelaFormatos.DaExtensao(arquivoDeEntrada);
+        var compat = !novo && info is { Legado: true };
+        var formatoDaSessao = compat ? TabelaFormatos.GravaComo(info!) : formato;
+        var sessao = new SessaoDocumento
+        {
+            ArquivoOrigem = caminho, Formato = formatoDaSessao, PastaRecovery = recovery, Novo = novo, Compatibilidade = compat, TituloDoNovo = tituloDoNovo,
+            NumeroDoNovo = novo && tituloDoNovo is null ? ContadorDeNovos.Proximo(formato.DocType()) : 0,
+            CopiaDeLeitura = copia,
+            SomenteLeitura = acesso != EstadoAcesso.Livre, MotivoSomenteLeitura = acesso,
+            // Livre: o original e' travado quando o x2t terminar de le-lo (ResponderAberturaAsync); o carimbo e' o de AGORA, antes da
+            // leitura — uma gravacao por fora durante a conversao aparece como conflito no primeiro salvar.
+            TravarAoAbrir = !novo && acesso == EstadoAcesso.Livre,
+            Carimbo = !novo && acesso == EstadoAcesso.Livre ? CarimboArquivo.De(caminho) : null,
+        };
+        CalcularAvisosDeAbertura(sessao, arquivoDeEntrada, novo, sessao.EntradaDeLeitura);
+        _apresentarSessao = apresentar ? sessao : null;
         // Recuperacao apos queda (Task 2 do Plano 3): a trava diz "sessao viva" enquanto a janela existir (o SO
         // a solta sozinho se o processo morrer), e os metadados dizem como reabrir a pasta depois de uma queda.
         // Melhor esforco nos dois: sem eles o documento abre do mesmo jeito, so' nao e' recuperavel.
         // Carimbo do original (I2 da revisao final do Plano 3): e' o que diz, numa recuperacao, se o arquivo foi
         // mexido depois da queda. Documento novo nao tem original.
-        var metadados = new MetadadosSessao(caminho, (int)formato, sessao.Titulo, novo, _app, sessao.IdUsuario);
+        var metadados = new MetadadosSessao(caminho, (int)formatoDaSessao, sessao.Titulo, novo, _app, sessao.IdUsuario) { Compatibilidade = compat };
         MarcarRecuperavel(sessao, novo ? metadados : metadados.ComCarimboDe(caminho), _arquivos.Log);
-        await IniciarSessaoAsync(sessao, _conv.ParaBinAsync(caminho, recovery));
+        await IniciarSessaoAsync(sessao, _conv.ParaBinAsync(sessao.EntradaDeLeitura, recovery));
     }
 
     /// <summary>
@@ -1094,6 +1187,11 @@ public partial class JanelaEditor : Window
     public async Task RecuperarAsync(string pasta)
     {
         await ProntoAsync();
+        // Reabrir dos "Nao salvos recentemente" (backlog 56): a pasta volta para a recuperacao ANTES de abrir — uma queda ou logoff depois a deixa listada como
+        // "Documentos recuperados" (e nao sob a varredura de 4 dias dos descartados). Se o move falhar, abre uma copia e o descartado fica intocado.
+        if (Descartados.Contem(Pastas.Descartados, pasta))
+            pasta = Descartados.Repor(pasta, Pastas.Recuperacao)
+                ?? throw new InvalidOperationException("Não foi possível recuperar o documento: não deu para preparar a pasta de recuperação.");
         var m = MetadadosSessao.Ler(pasta)
             ?? throw new InvalidOperationException("Não foi possível recuperar o documento: os dados da sessão (sessao.json) estão ausentes ou danificados.");
         var ficticia = new SessaoDocumento { ArquivoOrigem = m.Origem, Formato = (FormatoDocumento)m.Formato, PastaRecovery = pasta };
@@ -1135,6 +1233,13 @@ public partial class JanelaEditor : Window
             Formato = (FormatoDocumento)m.Formato,
             PastaRecovery = pasta,
             Novo = m.Novo,
+            // Plano 6, Task 2: a sessao caida era de um legado — continua em compatibilidade (nunca regrava o .doc/.xls/.ppt).
+            Compatibilidade = m.Compatibilidade,
+            // Plano 6, Task 3: CSV/TXT recuperado volta com a codificacao/delimitador da sessao que caiu; sem eles (sessao.json antigo ou
+            // ilegivel) nao se adivinha — o "Salvar" vira "Salvar como" (SessaoDocumento.OpcoesTextoDesconhecidas).
+            OpcoesTexto = m.TextoCodificacao is { } codificacao
+                ? new OpcoesTexto(codificacao, m.TextoDelimitador ?? OpcoesTexto.SemDelimitador, DelimitadorChar: m.TextoDelimitadorChar) : null,
+            OpcoesTextoDesconhecidas = m.TextoCodificacao is null && (FormatoDocumento)m.Formato is FormatoDocumento.Csv or FormatoDocumento.Txt,
             Recuperada = true,
             ChangesAbertos = n,
             IdUsuario = m.IdUsuario + 1,
@@ -1145,6 +1250,30 @@ public partial class JanelaEditor : Window
             // I2: o original mudou (ou sumiu) depois da queda — salvar vira "Salvar como", nunca por cima dele.
             Desvinculada = m.OrigemMudou(),
         };
+        // Plano 6, Task 5: o original de uma sessao recuperada nao e' travado (nem ganha carimbo novo: o I2 trata o original mudado), mas
+        // se ele hoje esta' em uso por outro ou somente leitura, a sessao recuperada tambem nao grava nele.
+        _donoDoArquivoEmUso = null;
+        if (!m.Novo && File.Exists(m.Origem) && AcessoAoArquivo.Sondar(m.Origem) is var acesso)
+        {
+            if (acesso != EstadoAcesso.Livre)
+            {
+                sessao.SomenteLeitura = true;
+                sessao.MotivoSomenteLeitura = acesso;
+                if (acesso == EstadoAcesso.EmUso) _donoDoArquivoEmUso = ArquivoDeDono.LerNome(ArquivoDeDono.CaminhoPara(m.Origem));
+                _arquivos.Log($"RECUPERACAO o original esta' {acesso}: a sessao recuperada abre somente leitura");
+            }
+            else if (!sessao.Desvinculada)
+            {
+                // Fix 1 da revisao da Task 5 (IMPORTANTE): o original nao mudou desde a queda e esta' livre — a sessao recuperada vai gravar
+                // nele, entao o trava e cria o ~$ como uma abertura normal (no mesmo ponto: depois do Editor.bin, em ResponderAberturaAsync)
+                // e tira o carimbo AGORA. Sem isto um colega abria e salvava o original e o Ctrl+S daqui gravava por cima em silencio. Se a
+                // trava nao vier, o carimbo fica (o conflito continua detectado). A pasta de recuperacao nao e' tocada por nada disto.
+                sessao.Carimbo = CarimboArquivo.De(m.Origem);
+                sessao.TravarAoAbrir = true;
+            }
+        }
+        CalcularAvisosDeAbertura(sessao, m.Origem, m.Novo);
+        _apresentarSessao = null;
         if (sessao.Desvinculada)
             _arquivos.Log("RECUPERACAO o arquivo original mudou (ou sumiu) depois da queda: a sessao salva so' com outro nome");
         // Regravado JA' com o id novo: se ESTA sessao tambem cair, a proxima recuperacao sobe mais um. O carimbo do
@@ -1218,7 +1347,7 @@ public partial class JanelaEditor : Window
             // PonteDesktop.SalvarChanges): a sessao falha FECHADA. Chega DENTRO da chamada sincrona do JS: so' agenda.
             detalhe => Dispatcher.BeginInvoke(() => { if (ReferenceEquals(sessao, _sessao) && !_fechada) FalharGravacaoDeAlteracoes(detalhe); }));
         wv.AddHostObjectToScript("ponte", _ponte);
-        var url = MontarUrlDeEntrada(formato, _sessao.Titulo, Tema);
+        var url = MontarUrlDeEntrada(formato, _sessao.Titulo, Tema, Autor, TemaId, temArquivo: !novo && !sessao.Desvinculada);
         _arquivos.Log($"PONTE abrindo {Path.GetFileName(caminho)} ({formato}{(novo ? ", novo" : "")}{(sessao.Recuperada ? ", recuperado" : "")}) -> {url}");
         AtualizarTitulo();
         try
@@ -1267,6 +1396,7 @@ public partial class JanelaEditor : Window
             return;
         }
         if (tipo == "escTelaCheia") { if (ReferenceEquals(origem, _sessao)) EscNaTelaCheia("editor"); return; }
+        if (tipo == "atalho") { if (ReferenceEquals(origem, _sessao)) ReceberAtalho(param); return; }
         // A chamada SalvarChanges LANCOU no JS (fix round 3): o lote se perdeu sem o host saber. Mesma falha fechada do
         // retorno "falhou" (a ponte congela ja'; o resto sai da chamada sincrona).
         if (tipo == "falhaGravacao")
@@ -1284,9 +1414,20 @@ public partial class JanelaEditor : Window
             _arquivos.Log("PONTE aviso " + tipo + " ignorado: veio da pagina de um documento anterior");
             return;
         }
-        if (tipo == "pronto") { try { DocumentoPronto?.Invoke(); } catch (Exception ex) { _arquivos.Log("PONTE erro no aviso de pronto: " + ex.Message); } }
+        if (tipo == "pronto")
+        {
+            // M5: marca ja' (so' um campo); o alvo do WebView2 sai fora da chamada sincrona do JS.
+            if (ReferenceEquals(origem, _sessao)) _sessaoPronta = origem;
+            Dispatcher.BeginInvoke(() => { if (!_fechada) AoFicarProntoAplicarAlvo(origem); });
+            try { DocumentoPronto?.Invoke(); } catch (Exception ex) { _arquivos.Log("PONTE erro no aviso de pronto: " + ex.Message); }
+            IniciarApresentacaoSePedida(origem);
+            // A10: documento novo mostra "Documento1" no cabecalho do editor (e nao o nome do modelo); fora da chamada sincrona do JS.
+            if (ReferenceEquals(origem, _sessao) && origem.Novo)
+                Dispatcher.BeginInvoke(async () => { if (!_fechada) try { await DefinirLegendaNoEditorAsync(origem.Titulo); } catch (Exception ex) { _arquivos.Log("PONTE legenda do cabecalho: " + ex.Message); } });
+        }
         else if (tipo == "localStartOpen") _ = ResponderAberturaAsync();
-        else if (tipo == "abrirImagem") _ = ResponderDialogoImagemAsync();
+        // Plano 6, Task 8: dialogo por filtro, conversao, leitura, vinculo e recentes (JanelaEditor.Arquivos.cs).
+        else if (TratarAvisoDeArquivos(origem, tipo, param)) { }
         else if (tipo == "semSuporte" && ReferenceEquals(origem, _sessao) && MensagensSemSuporte.TryGetValue(param, out var semSuporte))
             Dispatcher.BeginInvoke(() => { if (!_fechada) AvisarUsuario(semSuporte); });
         else if (tipo == "colar") _ = AtalhoPedidoDoEditorAsync(ColarAsync, tipo);
@@ -1451,16 +1592,75 @@ public partial class JanelaEditor : Window
     /// DEPOIS de <c>EndSave</c> ja' ter sido respondido ao editor, entao uma excecao de assinante subindo
     /// daqui viraria um <c>EndSave(2)</c> indevido no <c>catch</c> de <see cref="SalvarPedidoDoEditorAsync"/>.
     /// </summary>
-    private void RestaurarModificadoSeHouveEdicao()
+    private void RestaurarModificadoSeHouveEdicao(bool marcarNoEditor = false)
     {
         var s = _sessao;
         if (s is null || !_edicaoNaoGravada || s.Modificado) return;
         s.Modificado = true;
+        // So' na exportacao: ali o EndSave(0) faz o editor se dar por gravado. Na falha (EndSave 2) o editor ja' restaura o seu estado.
+        if (marcarNoEditor) _ = MarcarModificadoNoEditorAsync();
         AtualizarTitulo();
         _arquivos.Log("PONTE alteracao pendente restaurada (o salvamento nao gravou o documento editavel)");
         try { ModificadoAlterado?.Invoke(true); }
         catch (Exception ex) { _arquivos.Log("PONTE erro no aviso de modificado (restauracao): " + ex.Message); }
     }
+
+    /// <summary>PL-02: devolve o "modificado" TAMBEM ao editor depois de uma exportacao/falha — sem isto o botao Salvar
+    /// fica cinza e o Ctrl+S nao grava. MEDIDO nos tres editores (Plano 6, Task 1, adendo 2): o EndSave de uma exportacao
+    /// e' tratado pelo editor como "gravado" e zera o ponto salvo do historico (<c>AscCommon.History</c>); a partir dai
+    /// <c>isDocumentModified()</c> e <c>asc_isDocumentCanSave()</c> dao false e o web-apps desabilita o Salvar.
+    /// <c>SetDocumentModified(true)</c> sozinho NAO resolve (no cell/slide so' dispara o evento e o CanSave e' recalculado
+    /// do historico; no word so' liga a bandeira, sem CanSave). O que resolve e' o campo "ForceSave" do proprio historico
+    /// (<c>Have_Changes</c> devolve true quando ele esta ligado, mesmo campo que o undo alem do ponto salvo liga): ele diz
+    /// "o documento difere do arquivo", sem passo de undo novo. O nome do campo e' minificado e DIFERE por editor (cell
+    /// <c>ssa</c>, word <c>TRa</c>); por isso e' descoberto pelo codigo do <c>Have_Changes</c> (a unica funcao do historico que
+    /// cita <c>LocalFileGetOpenChangesCount</c>; o campo e' o do <c>&amp;&amp;!1===this.X?</c>), com guarda e log "sem ..."
+    /// se o motor mudar. Depois: <c>SetDocumentModified(true)</c> (evento + bandeira do word) e, onde existe
+    /// (word), <c>_onUpdateDocumentCanSave()</c> (publico, nao minificado). Efeito: modificado e CanSave true, Salvar ligado,
+    /// pilha de undo intacta; o Ctrl+S grava (provado ao vivo). O "true" volta pelo onDocumentModifiedChanged (ponte ->
+    /// AoMudarModificado), o que e' o estado correto.
+    /// Em "sem efeito" (pos-condicao nao atendida) so' o campo e' restaurado: o <c>SetDocumentModified(true)</c> ja' disparado
+    /// (evento + bandeira do word) permanece. E' inofensivo: o <c>Modificado</c> do host ja' e' true nesse ponto
+    /// (<see cref="RestaurarModificadoSeHouveEdicao"/> o ligou antes), entao "modificado" e' o estado verdadeiro, e o
+    /// proximo save do editor zera tudo normalmente.</summary>
+    private async Task MarcarModificadoNoEditorAsync()
+    {
+        var js = EditorRealSemTeste("""
+            var H = w.AscCommon && w.AscCommon.History;
+            if (!H) return "sem History";
+            var fn = null;
+            for (var k in H) { if (typeof H[k] === "function" && /LocalFileGetOpenChangesCount/.test(String(H[k]))) { fn = H[k]; break; } }
+            if (!fn) return "sem Have_Changes";
+            var m = /&&!1===this\.([\w$]+)\?/.exec(String(fn));
+            if (!m || typeof H[m[1]] !== "boolean") return "sem ForceSave";
+            if (typeof api.SetDocumentModified !== "function") return "sem SetDocumentModified";
+            if (typeof api.asc_isDocumentCanSave !== "function" || typeof api.isDocumentModified !== "function") return "sem leitores de estado";
+            var antes = H[m[1]];
+            H[m[1]] = true;
+            api.SetDocumentModified(true);
+            if (typeof api._onUpdateDocumentCanSave === "function") api._onUpdateDocumentCanSave();
+            if (!(api.asc_isDocumentCanSave() && api.isDocumentModified())) { H[m[1]] = antes; return "sem efeito"; }
+            return "ok";
+            """);
+        try
+        {
+            var r = (await ExecutarJsAsync(js)).Trim('"');
+            if (r != "ok") _arquivos.Log("PONTE marcar modificado no editor: " + r);
+        }
+        catch (Exception ex) { _arquivos.Log("PONTE marcar modificado nao entregue (a janela fechou?): " + ex.Message); }
+    }
+
+    /// <summary>Preambulo comum dos scripts que agem no editor do quadro (mesmo formato de EditorReal.NoEditor dos testes).</summary>
+    private static string EditorRealSemTeste(string corpo) => """
+        (function () {
+          try {
+            var w = window.frames[0];
+            var api = w && ((w.Asc && w.Asc.editor) ? w.Asc.editor : w.editor);
+            if (!api) return "sem api";
+            CORPO
+          } catch (e) { return "erro: " + e; }
+        })()
+        """.Replace("CORPO", corpo);
 
     private async Task ResponderAberturaAsync()
     {
@@ -1486,12 +1686,26 @@ public partial class JanelaEditor : Window
                 // aqui. Uma sessao recuperada nunca passa por aqui: o Editor.bin dela ja' esta' decifrado (sem x2t).
                 if (!ReferenceEquals(sessaoAberta, _sessao)) return;
                 sessaoAberta.Senha = null;   // 91: a tentativa anterior estava errada
-                await PedirSenhaAoEditorAsync(ec.CodigoSaida);
+                await PedirOpcoesAoEditorAsync(ec.CodigoSaida);
+                return;
+            }
+            catch (ErroConversao ec) when (ec.CodigoSaida == X2tConversor.CodigoPrecisaDeOpcoes && !sessaoAberta.Recuperada)
+            {
+                // CSV/TXT (Plano 6, Task 3): mesmo canal da senha. O editor mostra o dialogo de importacao (codificacao e, no CSV,
+                // delimitador) e a resposta chega por SetAdvancedOptions (ReceberOpcoesAvancadas), que reconverte com as opcoes.
+                // O host entrega ao dialogo a sugestao detectada e, no CSV, o COMECO do arquivo (previa e deteccao do delimitador).
+                if (!ReferenceEquals(sessaoAberta, _sessao)) return;
+                var csv = sessaoAberta.Formato == FormatoDocumento.Csv;
+                // A previa (bytes do arquivo) so' vai no CSV: o editor de TEXTO trata o quarto argumento como URL e falha com "Erro
+                // desconhecido" quando recebe os bytes (MEDIDO ao vivo no mTexto); o dialogo de TXT abre sem previa, so' com a codificacao.
+                await PedirOpcoesAoEditorAsync(ec.CodigoSaida, SugestaoDeTexto.Detectar(sessaoAberta.EntradaDeLeitura, csv), csv ? sessaoAberta.EntradaDeLeitura : null);
                 return;
             }
             // A senha digitada abriu o arquivo: a sessao passa a ser "protegida" no sessao.json (a senha, nunca).
             if (sessaoAberta.Senha is not null) MarcarProtegido(sessaoAberta, true);
-            var bytes = await File.ReadAllBytesAsync(bin);
+            // Plano 6, Task 5: o x2t terminou de ler o original — agora a sessao o trava e cria o ~$ (abertura Livre).
+            TravarOriginalSePedido(sessaoAberta);
+            byte[]? bytes = await File.ReadAllBytesAsync(bin);
             // O JS prefixa file:// nesta pasta (sdk-all.js: `0 != tia.indexOf("file:")`), e a midia sai como
             // file://<pasta>/media/... — ver a pergunta em aberto no relatorio da Task 5A.
             // Sessao recuperada (Task 2 do Plano 3): os changes gravados vao junto, aplicados pelo editor antes do
@@ -1499,8 +1713,13 @@ public partial class JanelaEditor : Window
             // do array e ChangesAbertos sao a mesma leitura, e o truncamento relativo depende disso.
             var changes = _sessao.Recuperada ? _changesRecuperados : null;
             if (changes is { } c) _arquivos.Log($"RECUPERACAO aplicando {c.Quantidade} changes ({c.ArrayJs.Length} caracteres) antes do EndLoad");
-            await ChamarEndLoadAsync(_sessao.PastaRecovery.Replace('\\', '/'), Convert.ToBase64String(bytes), bytes.Length, changes);
-            _arquivos.Log($"PONTE EndLoad enviado ({bytes.Length} bytes)");
+            // Plano 6, Task 11 (PL-10): o host nao guarda o Editor.bin nem o base64 enquanto o editor carrega — so' o tamanho fica.
+            var tamanhoDoBin = bytes.Length;
+            var base64 = Convert.ToBase64String(bytes);
+            bytes = null;
+            await ChamarEndLoadAsync(_sessao.PastaRecovery.Replace('\\', '/'), base64, tamanhoDoBin, changes);
+            _arquivos.Log($"PONTE EndLoad enviado ({tamanhoDoBin} bytes)");
+            LogarMemoria("depois-do-endload");
             // Impressoras do Windows no painel de impressao (Task 5): depois do EndLoad, fora da thread de interface.
             if (_sessao is { } aberta) ImpressorasEnviadasParaTeste = EnviarImpressorasAoEditorAsync(aberta);
         }
@@ -1596,65 +1815,9 @@ public partial class JanelaEditor : Window
         Dispatcher.BeginInvoke(() => { if (!_fechada) Close(); });
     }
 
-    /// <summary>
-    /// "Inserir imagem do arquivo". Caminho REAL do sdkjs 9.4.0.129 (medido em sdkjs/word/sdk-all.js:9919046,
-    /// <c>Asc.asc_docs_api.prototype.qUa = asc_addImage</c>): o editor chama
-    /// <c>AscDesktopEditor.OpenFilenameDialog("images", false, cb)</c> e, no callback, chama sozinho
-    /// <c>LocalFileGetImageUrl(&lt;caminho&gt;)</c> + <c>editor.RHa([AscCommon.Ss.RS(nome)])</c>. Ou seja: o
-    /// host devolve o CAMINHO escolhido, nao o nome da midia — quem copia para <c>media/</c> e' a chamada
-    /// seguinte, em <see cref="PonteDesktop.ImagemUrl"/>.
-    /// (<c>LocalFileGetImageUrlFromOpenFileDialog</c>, a hipotese do brief, existe no desktop-sdk mas NAO e'
-    /// chamada por nenhum arquivo do motor desta versao — ver o relatorio da Task 5.)
-    ///
-    /// O dialogo e' aberto FORA da chamada sincrona do JS (<c>await Task.Yield()</c>, como o
-    /// <see cref="ResponderAberturaAsync"/>): um modal do Windows com o renderer bloqueado esperando o retorno
-    /// de um objeto de host trava os dois lados.
-    /// </summary>
-    private async Task ResponderDialogoImagemAsync()
-    {
-        await Task.Yield();
-        string? escolhido = null;
-        try
-        {
-            escolhido = EscolherImagemParaTeste is not null ? EscolherImagemParaTeste() : EscolherImagemNoWindows();
-            if (escolhido is not null) _ponte?.PermitirArquivoEscolhido(escolhido);
-            _arquivos.Log("PONTE dialogo de imagem: " + (escolhido is null ? "cancelado" : Path.GetFileName(escolhido)));
-        }
-        catch (Exception ex)
-        {
-            // O callback TEM de ser respondido mesmo assim: o sdkjs guarda um unico callback pendente por
-            // vez (`if (window.on_native_open_filename_dialog) return;` no app oficial), e deixa-lo pendurado
-            // deixaria "inserir imagem" morto ate recarregar o editor.
-            _arquivos.Log("PONTE dialogo de imagem falhou: " + ex.Message);
-        }
-        var js = """
-            (function () {
-              try {
-                var w = (window.__moffice && window.__moffice.dialogoPendente) ? window : window.frames[0];
-                if (!w || !w.__moffice || typeof w.__moffice.responderDialogo !== "function") return "sem ponte no quadro";
-                return "ok " + w.__moffice.responderDialogo(ESCOLHIDO);
-              } catch (e) { return "erro: " + e; }
-            })()
-            """.Replace("ESCOLHIDO", System.Text.Json.JsonSerializer.Serialize(escolhido ?? ""));
-        try
-        {
-            var r = (await ExecutarJsAsync(js)).Trim('"');
-            if (!r.StartsWith("ok", StringComparison.Ordinal)) _arquivos.Log("PONTE resposta do dialogo de imagem: " + r);
-        }
-        catch (Exception ex) { _arquivos.Log("PONTE nao conseguiu responder o dialogo de imagem: " + ex.Message); }
-    }
-
-    private static string? EscolherImagemNoWindows()
-    {
-        var dialogo = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "Inserir imagem",
-            Filter = "Imagens|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.svg|Todos os arquivos|*.*",
-            CheckFileExists = true,
-            Multiselect = false,
-        };
-        return dialogo.ShowDialog() == true ? dialogo.FileName : null;
-    }
+    // "Inserir imagem do arquivo" (e todo OpenFilenameDialog do editor): ResponderDialogoArquivoAsync em JanelaEditor.Arquivos.cs (Plano 6, Task 8).
+    // Caminho REAL do sdkjs 9.4.0.129 (sdkjs/word/sdk-all.js:9919046, asc_addImage = qUa): OpenFilenameDialog("images", false, cb) e, no callback,
+    // LocalFileGetImageUrl(<caminho>) — o host devolve o CAMINHO escolhido; quem copia para media/ e' PonteDesktop.ImagemUrl.
 
     /// <summary>O que a troca da base das midias fez no ultimo <c>EndLoad</c> (<c>"trocado &lt;objeto&gt;.&lt;prop&gt;
     /// -&gt; https://moffice-doc.local"</c>, ou a explicacao de por que nao trocou). E' a unica leitura possivel
@@ -1674,17 +1837,18 @@ public partial class JanelaEditor : Window
     /// EndLoad, na ordem do app oficial: <c>LocalFileSetSaved(false)</c>, <c>LocalFileRecoverFolder</c>,
     /// <c>LocalFileSetSourcePath</c>, <c>DesktopOfflineAppDocumentApplyChanges([...])</c>,
     /// <c>LocalFileSetOpenChangesCount(n)</c> — o proprio editor aplica os changes ao abrir o documento.</summary>
-    private async Task ChamarEndLoadAsync(string pasta, string base64, int tamanho, (string ArrayJs, int Quantidade)? changesRecuperados = null)
+    private async Task ChamarEndLoadAsync(string pasta, string? base64, int tamanho, (string ArrayJs, int Quantidade)? changesRecuperados = null)
     {
         // A sessao para a qual este EndLoad foi pedido (antes de qualquer await): o sinal 1 da confirmacao da
         // recuperacao so' vale para ela.
         var sessaoDoEndLoad = _sessao;
         // DesktopOfflineAppDocumentEndLoad vive no quadro do editor (sdkjs/word/sdk-all.js), nao no documento
         // de cima; mesma origem, entao window.frames[0] alcanca.
-        var argumentos = string.Join(", ",
-            System.Text.Json.JsonSerializer.Serialize(pasta),
-            System.Text.Json.JsonSerializer.Serialize(base64),
-            tamanho.ToString());
+        // Plano 6, Task 11 (PL-10): o base64 entra no script DIRETO entre aspas (o alfabeto base64 — letras, digitos, +, / e = — nao precisa de
+        // escape em JS, e o JsonSerializer ainda trocava o + por +), em vez de Serialize + Join + interpolacao: tres copias de dezenas de
+        // MB no LOH a menos. Entre as aspas vai SO' base64 (ou "" no EndLoad de erro).
+        var pastaJson = System.Text.Json.JsonSerializer.Serialize(pasta);
+        var tamanhoJs = tamanho.ToString(System.Globalization.CultureInfo.InvariantCulture);
         // Montagem por interpolacao (UMA passada), nao por .Replace encadeado (Task 2 do Plano 3): com
         // Replace, o texto ja' inserido (o base64 do Editor.bin, o array de changes) era varrido de novo pelas
         // trocas seguintes — um "BASE" dentro do base64 do documento viraria a URL das midias e corromperia o
@@ -1698,9 +1862,15 @@ public partial class JanelaEditor : Window
         var falhaDeTeste = FalharReaplicacaoParaTeste ? "throw new Error(\"falha simulada da reaplicacao (teste)\"); " : "";
         var recuperar = changesRecuperados is { } c && pasta.Length > 0 && _sessao is { } s
             ? "w.__mofficeErroRecuperacao = \"\"; try { " + falhaDeTeste + "var d = w.AscDesktopEditor; d.LocalFileSetSaved(false); d.LocalFileRecoverFolder(" + System.Text.Json.JsonSerializer.Serialize(pasta)
-              + "); d.LocalFileSetSourcePath(" + System.Text.Json.JsonSerializer.Serialize(s.ArquivoOrigem)
+              + "); d.LocalFileSetSourcePath(" + System.Text.Json.JsonSerializer.Serialize(PonteDesktop.OrigemParaOEditor(s))
               + "); w.DesktopOfflineAppDocumentApplyChanges(" + c.ArrayJs + "); d.LocalFileSetOpenChangesCount(" + c.Quantidade + ");"
               + " } catch (e) { if (w.__moffice) w.__moffice.congelado = true; w.__mofficeErroRecuperacao = String((e && (e.stack || e.message)) || e) || \"erro\"; }"
+            : "";
+        // Plano 6, Task 5: sessao somente leitura — a restricao ReadOnly do motor ANTES do EndLoad (o `true` nao chama a ponte de volta).
+        // O web-apps, ao ficar pronto, marca o cabecalho "(Somente leitura)", mostra a dica tipFileReadOnly e volta a restricao para None:
+        // o documento continua editavel e o salvar vira "Salvar como" (ExigeSalvarComo). Medido ao vivo (relatorio da Task 5).
+        var restricao = pasta.Length > 0 && _sessao is { SomenteLeitura: true }
+            ? "try { var ar = (w.Asc && w.Asc.editor) ? w.Asc.editor : w.editor; if (ar && typeof ar.asc_setLocalRestrictions === \"function\") ar.asc_setLocalRestrictions(w.Asc.c_oAscLocalRestrictionType.ReadOnly, true); } catch (e) { }"
             : "";
         var baseMidia = System.Text.Json.JsonSerializer.Serialize(pasta.Length == 0 ? "" : Midia.BaseUrlDocumento);
         var antigo = System.Text.Json.JsonSerializer.Serialize(AntigoParaTrocaDeBase(pasta));
@@ -1710,7 +1880,8 @@ public partial class JanelaEditor : Window
                 var w = (typeof DesktopOfflineAppDocumentEndLoad === "function") ? window : window.frames[0];
                 if (!w || typeof w.DesktopOfflineAppDocumentEndLoad !== "function") return "sem EndLoad";
                 {{recuperar}}
-                w.DesktopOfflineAppDocumentEndLoad({{argumentos}});
+                {{restricao}}
+                w.DesktopOfflineAppDocumentEndLoad({{pastaJson}}, "{{base64}}", {{tamanhoJs}});
                 // Troca da base das midias, LOGO depois do EndLoad (Task 5/S4, pergunta aberta da Task 5A):
                 // o proprio EndLoad acabou de fazer AscCommon.Ss.tia = "file://" + <pasta>, e o Chromium
                 // recusa subrecurso file:// numa pagina https. A pasta de recovery ja' e' servida por
@@ -1722,7 +1893,11 @@ public partial class JanelaEditor : Window
               } catch (e) { return "erro: " + e; }
             })()
             """;
+        base64 = null;   // o script ja' tem o conteudo: solta a copia do parametro (campo da maquina de estado) antes de esperar o editor
         var r = await ExecutarJsAsync(js);
+        js = null!;
+        // Plano 6, Task 11 (PL-10): documento grande deixou dezenas de MB mortos no LOH (bytes, base64, script); compacta uma vez.
+        CompactarAposEndLoad(tamanho);
         var limpo = r.Trim('"');
         if (!limpo.StartsWith("ok", StringComparison.Ordinal))
         {
@@ -1848,20 +2023,11 @@ public partial class JanelaEditor : Window
     /// <summary>Faixa de "Baixar arquivos" (imagem por URL, comparar/combinar por URL): <c>AscDesktopEditor.DownloadFiles</c>.</summary>
     public const string MensagemBaixarArquivos = "Baixar arquivos da internet não é suportado no mOffice (sem acesso à rede).";
 
-    /// <summary>Faixa de "Importar texto/CSV de arquivo" da planilha (<c>loadLocalFile</c> e o dialogo "csv/txt").</summary>
-    public const string MensagemImportarTexto = "Importar texto ou CSV de um arquivo não é suportado no mOffice.";
-
-    /// <summary>Faixa de "Comparar"/"Combinar" com documento de arquivo (<c>CompareDocumentFile</c>/<c>MergeDocumentFile</c>
-    /// e o dialogo "word").</summary>
-    public const string MensagemCompararDocumento = "Comparar ou combinar com outro documento não é suportado no mOffice.";
-
     /// <summary>Chave do aviso "semSuporte" da ponte (ponte-desktop.js) -> faixa pt-BR. Chave desconhecida so' vai ao log.</summary>
     internal static readonly IReadOnlyDictionary<string, string> MensagensSemSuporte = new Dictionary<string, string>
     {
         ["novaPastaDeTrabalho"] = MensagemNovaPastaDeTrabalho,
         ["baixarArquivos"] = MensagemBaixarArquivos,
-        ["importarTexto"] = MensagemImportarTexto,
-        ["compararDocumento"] = MensagemCompararDocumento,
     };
 
     /// <summary>Faixa quando a linha "PDF assinado com mPDF" foi escolhida mas o nome digitado tinha extensao de DOCUMENTO
@@ -1884,18 +2050,27 @@ public partial class JanelaEditor : Window
 
     /// <summary>Recusa de gravar por cima do original numa sessao recuperada desvinculada (I2), para quem escolher o
     /// proprio original no "Salvar como".</summary>
+    public const string MensagemOpcoesDeTextoDesconhecidas =
+        "Depois da queda não se sabe com que codificação este arquivo de texto foi lido: para não trocar os caracteres do original, use Salvar como e escolha o tipo pela lista.";
+
     public const string MensagemOriginalAlteradoRecusado =
         "O arquivo original foi alterado (ou removido) depois da queda: para não sobrescrever a versão mais nova, salve estas alterações com outro nome.";
 
     /// <summary>Por que este salvamento NAO pode gravar em <paramref name="destino"/> (texto pt-BR), ou <c>null</c>.
     /// Falha FECHADA das duas regras da revisao final do Plano 3: I1 (original cifrado sem senha definida) e I2
     /// (original alterado depois da queda). Exportacao (PDF) nunca cai aqui: o destino e' sempre outro arquivo.</summary>
-    private static string? MotivoParaRecusarGravacao(SessaoDocumento s, string destino, FormatoDocumento fmt)
+    private static string? MotivoParaRecusarGravacao(SessaoDocumento s, string destino, FormatoDocumento fmt, OpcoesTexto? textoPedido = null)
     {
+        if (!ExtensaoCombina(destino, fmt)) return MensagemExtensaoNaoCombina(destino, fmt);
         if (s.OriginalProtegidoSemSenha is { } cifrado && s.Senha is null && X2tConversor.FormatoGuardaSenha(fmt)
             && MesmoArquivo(destino, cifrado))
             return MensagemProtegidoSemSenhaRecusado;
         if (s.Desvinculada && MesmoArquivo(destino, s.ArquivoOrigem)) return MensagemOriginalAlteradoRecusado;
+        // Plano 6, Task 5: aberto somente leitura (em uso por outro, atributo, sem permissao) — o original nunca e' regravado.
+        if (s.SomenteLeitura && MesmoArquivo(destino, s.ArquivoOrigem)) return MensagemSomenteLeituraRecusado;
+        // CSV/TXT recuperado sem as opcoes: so' grava por cima do original se o usuario escolheu a codificacao numa linha do dialogo.
+        if (s.OpcoesTextoDesconhecidas && textoPedido is null && fmt is FormatoDocumento.Csv or FormatoDocumento.Txt && MesmoArquivo(destino, s.ArquivoOrigem))
+            return MensagemOpcoesDeTextoDesconhecidas;
         return null;
     }
 
@@ -1927,28 +2102,82 @@ public partial class JanelaEditor : Window
     /// web-apps abre o dialogo de senha (91 = com o aviso de senha incorreta). Espelho para os testes:
     /// <c>__moffice.ultimaOpcaoAvancada</c> (documento de cima e quadro).</summary>
     /// <exception cref="InvalidOperationException">O quadro nao tem o editor (a abertura falha como qualquer outra).</exception>
-    private async Task PedirSenhaAoEditorAsync(int codigo)
+    private async Task PedirOpcoesAoEditorAsync(int codigo, OpcoesTexto? sugestao = null, string? arquivoParaPrevia = null)
     {
         _opcaoAvancadaPendente = codigo;
-        _arquivos.Log($"SENHA documento protegido (x2t {codigo}): pedindo a senha ao editor");
-        var js = """
+        var texto = codigo == X2tConversor.CodigoPrecisaDeOpcoes;
+        _arquivos.Log(texto ? $"OPCOES CSV/TXT (x2t {codigo}): pedindo a codificacao e o delimitador ao editor"
+                             : $"SENHA documento protegido (x2t {codigo}): pedindo a senha ao editor");
+        // CSV/TXT (Plano 6, Task 3): o terceiro argumento (docinfo) leva a sugestao do host e o quarto manda o sdk ler o COMECO do arquivo
+        // por AscDesktopEditor.GetOpenedFile (ponte-desktop.js) — e' o que da' ao dialogo a previa e a deteccao automatica do delimitador.
+        // MEDIDO no bundle 9.4: o dialogo NAO le' o docinfo. A codificacao inicial dele vem do localStorage do proprio editor
+        // (sse-settings-csv-encoding no CSV, de-settings-open-encoding no TXT: o motor manda codepage -1 e o web-apps cai nessa
+        // preferencia), entao o host a SEMEIA com a sugestao detectada antes de pedir o dialogo; o usuario ainda troca no combo.
+        // Senha (90/91): chamada identica a de antes, so' com o codigo.
+        string? previa = null;
+        if (texto)
+        {
+            previa = LerComecoParaPrevia(arquivoParaPrevia);
+            if (sugestao is not null) _arquivos.Log($"OPCOES sugestao do host: codificacao {sugestao.Codificacao}, delimitador {sugestao.Delimitador}");
+        }
+        var js = MontarScriptDeOpcoes(codigo, texto ? sugestao : null, previa);
+        var r = (await ExecutarJsAsync(js)).Trim('"');
+        if (r != "ok")
+        {
+            _opcaoAvancadaPendente = null;
+            throw new InvalidOperationException((texto ? "O editor não conseguiu abrir o diálogo de importação do arquivo: "
+                                                       : "O documento é protegido por senha e o editor não conseguiu pedi-la: ") + r);
+        }
+    }
+
+    /// <summary>O JS que pede o dialogo de opcoes ao editor (<c>internal static</c>: testado sem janela). Senha (90/91): so' o codigo. CSV/TXT (89):
+    /// semeia a codificacao sugerida no localStorage do editor e, com <paramref name="previa"/> (base64), entrega os bytes iniciais por
+    /// <c>__moffice.dadosAbertos</c> so' durante a chamada. O codigo entra por interpolacao e o base64 (que tem maiusculas e podia conter o
+    /// texto "CODIGO") nunca passa por um Replace.</summary>
+    internal static string MontarScriptDeOpcoes(int codigo, OpcoesTexto? sugestao, string? previa)
+    {
+        var chamada = $"w.asc_initAdvancedOptions({codigo});";
+        if (codigo == X2tConversor.CodigoPrecisaDeOpcoes)
+        {
+            var docinfo = sugestao is null ? "undefined" : System.Text.Json.JsonSerializer.Serialize(
+                System.Text.Json.JsonSerializer.Serialize(new { codepage = sugestao.Codificacao, delimiter = sugestao.Delimitador }));
+            var semente = sugestao is null ? ""
+                : "try { w.localStorage.setItem(" + System.Text.Json.JsonSerializer.Serialize(
+                      sugestao.Delimitador == OpcoesTexto.SemDelimitador ? "de-settings-open-encoding" : "sse-settings-csv-encoding")
+                  + ", " + System.Text.Json.JsonSerializer.Serialize(sugestao.Codificacao.ToString()) + "); } catch (e) { } ";
+            chamada = semente + (previa is null
+                ? $"w.asc_initAdvancedOptions({codigo}, undefined, " + docinfo + ");"
+                : "var bin = atob(" + System.Text.Json.JsonSerializer.Serialize(previa) + "); var u8 = new Uint8Array(bin.length);"
+                  + " for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);"
+                  + $" w.__moffice.dadosAbertos = u8; try {{ w.asc_initAdvancedOptions({codigo}, undefined, " + docinfo + ", 1); } finally { w.__moffice.dadosAbertos = null; }");
+        }
+        return """
             (function () {
               try {
                 var w = (typeof asc_initAdvancedOptions === "function") ? window : window.frames[0];
                 if (!w || typeof w.asc_initAdvancedOptions !== "function") return "sem asc_initAdvancedOptions";
                 if (window.__moffice) window.__moffice.ultimaOpcaoAvancada = CODIGO;
                 if (w.__moffice) w.__moffice.ultimaOpcaoAvancada = CODIGO;
-                w.asc_initAdvancedOptions(CODIGO);
+                CHAMADA
                 return "ok";
               } catch (e) { return "erro: " + e; }
             })()
-            """.Replace("CODIGO", codigo.ToString());
-        var r = (await ExecutarJsAsync(js)).Trim('"');
-        if (r != "ok")
+            """.Replace("CODIGO", codigo.ToString()).Replace("CHAMADA", chamada);
+    }
+
+    /// <summary>Os primeiros <see cref="SugestaoDeTexto.BytesExaminados"/> do arquivo em base64, para a previa do dialogo de importacao;
+    /// <c>null</c> sem arquivo ou com erro de E/S (o dialogo abre sem previa).</summary>
+    private static string? LerComecoParaPrevia(string? arquivo)
+    {
+        if (arquivo is null) return null;
+        try
         {
-            _opcaoAvancadaPendente = null;
-            throw new InvalidOperationException("O documento é protegido por senha e o editor não conseguiu pedi-la: " + r);
+            using var f = File.OpenRead(arquivo);
+            var b = new byte[(int)Math.Min(SugestaoDeTexto.BytesExaminados, f.Length)];
+            f.ReadExactly(b);
+            return Convert.ToBase64String(b);
         }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
     }
 
     /// <summary>Resposta do dialogo de senha (<c>SetAdvancedOptions</c>). Roda DENTRO da chamada sincrona do JS: so'
@@ -1962,7 +2191,24 @@ public partial class JanelaEditor : Window
             _arquivos.Log("SENHA opcoes avancadas sem pedido pendente: ignoradas");
             return;
         }
+        var pendente = _opcaoAvancadaPendente;
         _opcaoAvancadaPendente = null;
+        // CSV/TXT (Plano 6, Task 3): a resposta do dialogo de importacao. So' vale para o pedido 89 (uma resposta de senha a um pedido
+        // de CSV, ou o contrario, e' cancelamento): reconverte com as opcoes escolhidas e volta para ResponderAberturaAsync.
+        if (pendente == X2tConversor.CodigoPrecisaDeOpcoes)
+        {
+            if (OpcoesAvancadas.Texto(xml) is not { } t)
+            {
+                _arquivos.Log("OPCOES abertura cancelada (resposta sem codificacao valida): a janela fecha");
+                Dispatcher.BeginInvoke(() => { if (!_fechada) Close(); });
+                return;
+            }
+            sessao.OpcoesTexto = t;
+            _arquivos.Log($"OPCOES CSV/TXT escolhidas: codificacao {t.Codificacao}, delimitador {t.Delimitador}{(t.DelimitadorChar is null ? "" : " (outro)")}");
+            _binPronto = _conv.ParaBinAsync(sessao.EntradaDeLeitura, sessao.PastaRecovery, texto: t);
+            _ = ResponderAberturaAsync();
+            return;
+        }
         var senha = OpcoesAvancadas.Senha(xml);
         if (senha is null)
         {
@@ -1971,7 +2217,7 @@ public partial class JanelaEditor : Window
             return;
         }
         sessao.Senha = senha;
-        _binPronto = _conv.ParaBinAsync(sessao.ArquivoOrigem, sessao.PastaRecovery, senha: senha);
+        _binPronto = _conv.ParaBinAsync(sessao.EntradaDeLeitura, sessao.PastaRecovery, senha: senha);
         _ = ResponderAberturaAsync();
     }
 
@@ -2377,25 +2623,45 @@ public partial class JanelaEditor : Window
         // cima da COPIA do modelo dentro da pasta de recuperacao — que e' apagada no fechamento. Quem chama
         // pela API do host (a casca) pergunta o destino e chama SalvarComoAsync; o Ctrl+S do editor cai no
         // mesmo lugar por SalvarPedidoDoEditorAsync, que forca o "salvar como".
-        if (_sessao.Novo) throw new InvalidOperationException("Documento novo: use SalvarComoAsync.");
-        return SalvarComoAsync(_sessao.ArquivoOrigem, _sessao.Formato);
+        // M3 da revisao final do Plano 6: a guarda e' a mesma do Ctrl+S (ExigeSalvarComo), nao so' o Novo — compatibilidade (.doc gravaria
+        // conteudo moderno por cima do legado), desvinculada, somente leitura e texto sem opcoes recusam AQUI, antes de pedir nada ao editor.
+        if (MotivoParaExigirSalvarComo(_sessao) is { } motivo) throw new InvalidOperationException(motivo);
+        return SalvarComoAsync(_sessao.ArquivoOrigem, _sessao.Formato, _sessao.OpcoesTexto);
     }
+
+    public const string MensagemNovoExigeSalvarComo = "Este documento ainda não foi salvo: use Salvar como para escolher o nome e a pasta.";
+
+    public const string MensagemCompatibilidadeExigeSalvarComo =
+        "Este arquivo está em Modo de compatibilidade (formato antigo): use Salvar como para gravá-lo em um formato atual.";
+
+    /// <summary>Por que o "Salvar" desta sessao tem de virar "Salvar como" (texto pt-BR), ou <c>null</c> se pode gravar no proprio arquivo. Espelha
+    /// <see cref="SessaoDocumento.ExigeSalvarComo"/> (a guarda do Ctrl+S): o teste garante que os dois nao divergem.</summary>
+    internal static string? MotivoParaExigirSalvarComo(SessaoDocumento s) =>
+        s.Novo ? MensagemNovoExigeSalvarComo
+        : s.Desvinculada ? MensagemOriginalAlteradoRecusado
+        : s.SomenteLeitura ? MensagemSomenteLeituraRecusado
+        : s.Compatibilidade ? MensagemCompatibilidadeExigeSalvarComo
+        : s.OpcoesTextoDesconhecidas ? MensagemOpcoesDeTextoDesconhecidas
+        : s.ExigeSalvarComo ? MensagemNovoExigeSalvarComo   // condicao nova em ExigeSalvarComo sem texto proprio: recusa mesmo assim
+        : null;
 
     /// <summary>Salva em <paramref name="destino"/> no formato <paramref name="fmt"/>, passando pelo editor
     /// (para que ele descarregue os changes pendentes antes da conversao). Devolve o que a gravacao fez —
     /// em particular se foi uma EXPORTACAO (PDF/PDF-A), que nao reponta a sessao e por isso nao serve como
     /// "salvei antes de fechar"; ver <see cref="ResultadoSalvar"/>.</summary>
-    public async Task<ResultadoSalvar> SalvarComoAsync(string destino, FormatoDocumento fmt)
+    /// <remarks><paramref name="texto"/> (Plano 6, Task 3, parametro novo NO FIM): codificacao e delimitador de um CSV/TXT; <c>null</c> =
+    /// os da sessao, ou o padrao do formato.</remarks>
+    public async Task<ResultadoSalvar> SalvarComoAsync(string destino, FormatoDocumento fmt, OpcoesTexto? texto = null)
     {
         if (_sessao is null) throw new InvalidOperationException("Nenhum documento aberto.");
         // Fix round 2 da revisao da Task 2: sessao recuperada inconsistente nao se salva (ver FalharRecuperacao).
         if (FalhaDaRecuperacao is not null) throw new InvalidOperationException(FalhaDaRecuperacao);
         var salvamento = IniciarSalvamento();
-        try { return await SalvarComoCorpoAsync(destino, fmt, salvamento.AvisosDeModificadoNoInicio); }
+        try { return await SalvarComoCorpoAsync(destino, fmt, salvamento.AvisosDeModificadoNoInicio, texto); }
         finally { TerminarSalvamento(salvamento); }
     }
 
-    private async Task<ResultadoSalvar> SalvarComoCorpoAsync(string destino, FormatoDocumento fmt, long avisosNoInicio)
+    private async Task<ResultadoSalvar> SalvarComoCorpoAsync(string destino, FormatoDocumento fmt, long avisosNoInicio, OpcoesTexto? texto)
     {
         var salvarComo = EhSalvarComo(_sessao!, destino, fmt);
         var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -2420,7 +2686,7 @@ public partial class JanelaEditor : Window
         await EsperarLocalFileSaveAsync(tcs);
         // Quem chamou pela API do host recebe a falha como excecao (com o codigo e o stderr do x2t intactos);
         // o editor ja foi avisado pelo EndSave(2) la dentro.
-        var falha = await ConverterESinalizarAsync(destino, fmt, avisosNoInicio);
+        var falha = await ConverterESinalizarAsync(destino, fmt, avisosNoInicio, texto);
         if (falha is not null) throw falha;
         return new ResultadoSalvar(Gravou: true, Exportou: fmt.EhExportacao());
     }
@@ -2483,8 +2749,10 @@ public partial class JanelaEditor : Window
             // host que pergunta o destino, como no "salvar como". (Task 2 do Marco 1 / Plano 2.)
             // Sessao recuperada DESVINCULADA (I2 da revisao final do Plano 3): o original mudou depois da queda, entao o
             // Ctrl+S tambem vira "Salvar como" (nome sugerido "<nome> (recuperado)").
-            if (_sessao.Novo || _sessao.Desvinculada) comoPedido = true;
+            // Plano 6: legado (Modo de compatibilidade) tambem — o original .doc/.xls/.ppt nunca e' regravado (SessaoDocumento.ExigeSalvarComo).
+            if (_sessao.ExigeSalvarComo) comoPedido = true;
             var assinar = false;
+            OpcoesTexto? texto = null;
             if (comoPedido || fileType != 0)
             {
                 // Plano 4, Task 2: o dialogo mostra SEMPRE a linha inteira do tipo de documento (OOXML, ODF, PDF, PDF/A,
@@ -2493,10 +2761,14 @@ public partial class JanelaEditor : Window
                 // so' com PDF. O painel do editor nao tem "assinado": a linha 5 so' e' escolhida no proprio dialogo.
                 var escolha = EscolherDestino(_sessao.Formato, PedidoSalvar.FormatoPorCodigo(fileType));
                 if (escolha is null) { await ChamarEndSaveAsync(1); return; }  // cancelou: nem sucesso nem erro
-                (destino, fmt, assinar) = (escolha.Caminho, escolha.Formato, escolha.Assinar);
+                (destino, fmt, assinar, texto) = (escolha.Caminho, escolha.Formato, escolha.Assinar, escolha.Texto);
             }
-            var falha = await ConverterESinalizarAsync(destino, fmt, salvamento.AvisosDeModificadoNoInicio);
+            var falha = await ConverterESinalizarAsync(destino, fmt, salvamento.AvisosDeModificadoNoInicio, texto);
             if (falha is null && assinar) PedirAssinatura(destino, fmt);
+            // Gravacao parcial (o original so' sobrou no .moffice-bak): aqui a falha NAO e' relancada (Ctrl+S / Salvar como do
+            // editor), entao o aviso sai uma vez, pela faixa, DEPOIS do EndSave(2). No caminho que relanca (SalvarComoAsync ->
+            // dialogo de fechamento / API do host) a mensagem viaja na excecao (ErroAoFechar / casca) e nao passa por aqui.
+            if (falha is ErroGravacaoParcial) AvisarUsuario(falha.Message);
         }
         catch (Exception ex)
         {
@@ -2511,25 +2783,92 @@ public partial class JanelaEditor : Window
     /// destino e avisa o editor. Escrita ATOMICA: o x2t grava num temporario ao lado do destino e so entao o
     /// arquivo antigo e' substituido — uma conversao que falha no meio nao deixa o documento do usuario truncado.
     /// Devolve null se salvou, ou a excecao que derrubou o salvamento (ja sinalizada ao editor com EndSave(2)).</summary>
-    private Task<Exception?> ConverterESinalizarAsync(string destino, FormatoDocumento fmt, long avisosNoInicio) =>
-        ConverterESinalizarCorpoAsync(destino, fmt, avisosNoInicio);
+    private async Task<Exception?> ConverterESinalizarAsync(string destino, FormatoDocumento fmt, long avisosNoInicio, OpcoesTexto? texto = null)
+    {
+        var falha = await ConverterESinalizarCorpoAsync(destino, fmt, avisosNoInicio, texto);
+        LogarMemoria("depois-de-salvar");   // Plano 6, Task 11: diagnostico local, depois de cada salvamento (deu certo ou nao)
+        return falha;
+    }
 
-    private async Task<Exception?> ConverterESinalizarCorpoAsync(string destino, FormatoDocumento fmt, long avisosNoInicio)
+    /// <summary>Plano 6, Task 11 (PL-10): uma linha de memoria do host no log da janela (<see cref="MedidaDeMemoria.Linha"/>). Melhor esforco.</summary>
+    private void LogarMemoria(string momento)
+    {
+        try { _arquivos.Log(MedidaDeMemoria.Linha(momento)); } catch { /* diagnostico: nunca derruba a abertura/salvamento/fechamento */ }
+    }
+
+    /// <summary>Plano 6, Task 11 (PL-10): depois de entregar um Editor.bin grande ao editor, compacta o LOH (limiar em
+    /// <see cref="MedidaDeMemoria.LimiarBytes"/>). A pausa vai para o log (<c>MEMORIA compactou-loh pausa=...</c>).</summary>
+    private void CompactarAposEndLoad(long bytesDoDocumento) => MedidaDeMemoria.CompactarSeGrande(bytesDoDocumento, _arquivos.Log);
+
+    /// <summary>Plano 6, Task 11 (PL-10): alvo de memoria do WebView2 por ativacao — Low quando a janela perde o foco (o renderer devolve
+    /// memoria enquanto o usuario trabalha em outro programa), Normal quando ganha. Melhor esforco: sem WebView2 pronto ou com um runtime que
+    /// recuse a propriedade, nada acontece (o documento nunca depende disto). Os fluxos de salvar, exportar e imprimir nao dependem do foco.</summary>
+    ///
+    /// <para>M5 da revisao final do Plano 6 (hipotese do backlog 74: a janela perdia o foco DURANTE a carga e o renderer ia para Low no meio
+    /// do EndLoad): Low so' DEPOIS de o documento da sessao atual avisar "pronto" (<see cref="DocumentoDaSessaoPronto"/>). Sem foco antes
+    /// disso, o pedido fica para o "pronto" (<see cref="AoFicarProntoAplicarAlvo"/>). Toda mudanca vai para o log com o estado da carga.</para></summary>
+    internal void AplicarAlvoDeMemoria(bool ativa)
+    {
+        try
+        {
+            var nucleo = Web?.CoreWebView2;
+            if (nucleo is null) return;
+            var alvo = ativa ? CoreWebView2MemoryUsageTargetLevel.Normal : CoreWebView2MemoryUsageTargetLevel.Low;
+            if (nucleo.MemoryUsageTargetLevel == alvo) return;
+            var estado = DocumentoDaSessaoPronto ? "pronto" : "carregando";
+            if (!ativa && !DocumentoDaSessaoPronto)
+            {
+                _arquivos.Log("MEMORIA alvo low adiado: a janela perdeu o foco com o documento " + estado);
+                return;
+            }
+            nucleo.MemoryUsageTargetLevel = alvo;
+            _arquivos.Log($"MEMORIA alvo {alvo.ToString().ToLowerInvariant()} (documento {estado})");
+            LogarMemoria("alvo-" + alvo.ToString().ToLowerInvariant());
+        }
+        catch (Exception ex) { try { _arquivos.Log("MEMORIA alvo do WebView2 nao aplicado: " + ex.Message); } catch { } }
+    }
+
+    /// <summary>A sessao ATUAL ja' avisou "pronto" (M5). `internal`: os testes leem.</summary>
+    internal bool DocumentoDaSessaoPronto => _sessao is not null && ReferenceEquals(_sessaoPronta, _sessao);
+    private SessaoDocumento? _sessaoPronta;
+
+    /// <summary>"pronto" da sessao atual (M5): com a janela SEM foco, aplica agora o Low que ficou adiado durante a carga.</summary>
+    private void AoFicarProntoAplicarAlvo(SessaoDocumento origem)
+    {
+        if (ReferenceEquals(origem, _sessao) && DocumentoDaSessaoPronto && !IsActive) AplicarAlvoDeMemoria(false);
+    }
+
+    /// <summary>Costura de teste: substitui o <c>File.Replace</c> da troca temporario -&gt; destino (<see cref="GravacaoNoDestino"/>).</summary>
+    internal Action<string, string, string>? SubstituirParaTeste { get; set; }
+
+    private async Task<Exception?> ConverterESinalizarCorpoAsync(string destino, FormatoDocumento fmt, long avisosNoInicio, OpcoesTexto? textoPedido)
     {
         var s = _sessao!;
+        // CSV/TXT (Plano 6, Task 3): as opcoes do destino; sem elas (Ctrl+S no mesmo arquivo), as da sessao, e por ultimo o padrao do
+        // formato — o x2t nunca recebe os fixos de antes (UTF-8 com BOM e virgula) para um CSV. Outros formatos: nenhuma.
+        var texto = fmt is FormatoDocumento.Csv or FormatoDocumento.Txt ? textoPedido ?? s.OpcoesTexto ?? OpcoesTexto.PadraoDe(fmt) : null;
         var tmp = destino + ".moffice-tmp";
         Exception? falha = null;
         string? senha = null;
         long? geracaoLida = null;
+        var substituindo = false; // true entre o inicio da troca temporario -> destino e o fim dela (ver o finally)
+        CarimboArquivo? carimboDaTroca = null; // Plano 6, Task 5: o carimbo do arquivo gravado, tirado logo depois da troca
         // Recusas da revisao final do Plano 3 (I1/I2): ANTES de qualquer E/S — o arquivo do usuario nao e' tocado, o
         // x2t nem roda. Saem pelos MESMOS canais de uma gravacao que falhou (EndSave 2 ao editor, Modificado
         // restaurado, excecao para quem chamou pela API do host) e, alem deles, pela faixa (AvisoAoUsuario).
-        var recusa = MotivoParaRecusarGravacao(s, destino, fmt);
+        var recusa = MotivoParaRecusarGravacao(s, destino, fmt, textoPedido);
         if (recusa is not null)
         {
             falha = new InvalidOperationException(recusa);
             UltimoErro = recusa;
             _arquivos.Log("PONTE salvamento RECUSADO (" + Path.GetFileName(destino) + "): " + recusa);
+        }
+        // Plano 6, Task 5 (SO-14 parte 1): o original mudou por fora desde a abertura/ultimo salvamento — pergunta ANTES de qualquer E/S.
+        else if (await ConferirConflitoAsync(s, destino, fmt) is { } cancelado)
+        {
+            falha = cancelado;
+            UltimoErro = cancelado.Message;
+            _arquivos.Log("PONTE salvamento CANCELADO no conflito (" + Path.GetFileName(destino) + ")");
         }
         else try
         {
@@ -2546,8 +2885,42 @@ public partial class JanelaEditor : Window
             // O que o x2t vai ler (fix rounds 3 e 4): se a ponte gravar alguma coisa depois daqui, o arquivo gravado nao tem
             // tudo — e a pasta de uma janela ja' fechada nao pode ser apagada no fim.
             geracaoLida = _ponte?.GeracaoDeGravacao;
-            await _conv.DeBinAsync(s.PastaRecovery, fmt, tmp, senhaSalvar: senha);
-            File.Move(tmp, destino, true);
+            await _conv.DeBinAsync(s.PastaRecovery, fmt, tmp, senhaSalvar: senha, texto: texto);
+            // FMT-10: o pacote do x2t e' conferido ANTES de tocar no arquivo do usuario; SO-14: substitui preservando ACL.
+            ValidadorDePacote.Validar(tmp, fmt, cifrado: !string.IsNullOrEmpty(senha));
+            substituindo = true;
+            // Plano 6, Task 5: a trava do original (FileShare.Read) recusaria o ReplaceFile deste proprio processo (MEDIDO): durante a troca
+            // ela passa a um handle Read+Delete (terceiros continuam sem gravar) e, no fim — deu certo ou nao —, volta a travar o que
+            // estiver no caminho (o arquivo novo, ou o original devolvido).
+            var trava = s.TravaDoOriginal is { } t0 && MesmoArquivo(t0.Documento, destino) ? t0 : null;
+            trava?.PrepararSubstituicao();
+            var retomada = false;
+            try
+            {
+                // Logo depois da troca e ANTES da limpeza do backup (MINOR 1 da revisao): retrava o arquivo novo e tira o carimbo dele.
+                if (GravacaoNoDestino.Substituir(tmp, destino, _arquivos.Log, SubstituirParaTeste, aposTroca: () =>
+                    {
+                        if (trava is not null && !_fechada && ReferenceEquals(s.TravaDoOriginal, trava))
+                        {
+                            retomada = true;
+                            if (!trava.Retomar()) AvisarSemReserva(destino, naAbertura: false);
+                        }
+                        carimboDaTroca = CarimboArquivo.De(destino);
+                    }) == ResultadoGravacao.SemPreservar)
+                    _arquivos.Log("PONTE salvo sem preservar metadados do destino (ReplaceFile recusado pelo sistema de arquivos)");
+            }
+            finally
+            {
+                // Janela fechada no meio (o Closed ja' descartou a trava) ou sessao trocada: nunca reabrir um handle que ninguem solta.
+                if (trava is not null && !retomada)
+                {
+                    if (_fechada || !ReferenceEquals(s.TravaDoOriginal, trava)) trava.Soltar();
+                    // So' chega aqui com a troca FALHANDO (sem o aviso aposTroca): a falha do salvamento ja' e' a mensagem ao usuario — sem
+                    // faixa extra de "sem reserva" (ex.: gravacao parcial, original so' no .moffice-bak: retomar falha e o Retomar so' registra).
+                    else trava.Retomar();
+                }
+            }
+            substituindo = false;
             UltimoErro = null;
             if (DepoisDaConversaoParaTeste is { } costura) await costura();
             _arquivos.Log($"PONTE salvo {fmt} -> {Path.GetFileName(destino)} ({new FileInfo(destino).Length} bytes, changes={File.Exists(s.ArquivoChanges)}{(string.IsNullOrEmpty(senha) ? "" : ", protegido por senha")})");
@@ -2558,7 +2931,17 @@ public partial class JanelaEditor : Window
             UltimoErro = ex is ErroConversao ec ? $"{ec.Message} [x2t {ec.CodigoSaida}] {ec.Stderr}" : ex.Message;
             _arquivos.Log("PONTE erro ao salvar: " + UltimoErro);
         }
-        finally { try { if (File.Exists(tmp)) { File.SetAttributes(tmp, FileAttributes.Normal); File.Delete(tmp); } } catch { } }
+        finally
+        {
+            // Invariante da troca (GravacaoNoDestino): se ela falhou e o destino NAO existe, o temporario e' o unico
+            // exemplar do documento — nao se apaga. Fora da troca (x2t falhou, pacote invalido) o temporario e' lixo.
+            try
+            {
+                if (File.Exists(tmp) && (!substituindo || File.Exists(destino))) { File.SetAttributes(tmp, FileAttributes.Normal); File.Delete(tmp); }
+                else if (File.Exists(tmp)) _arquivos.Log("PONTE temporario mantido: o destino nao existe e este e' o unico exemplar (" + Path.GetFileName(tmp) + ")");
+            }
+            catch { }
+        }
         // Protegido (fix round 3): com a janela fechada no meio (Ctrl+S e fechar logo em seguida) o EndSave nao tem mais
         // para quem ir, e uma excecao aqui pulava o resto — o registro da gravacao, os recentes e a limpeza da pasta.
         try { await ChamarEndSaveAsync(falha is null ? 0 : 2); }
@@ -2603,7 +2986,7 @@ public partial class JanelaEditor : Window
             // "Salvar" que o usuario respondeu com PDF deixa o documento parecendo salvo — o titulo
             // perde o asterisco, o botao Salvar desliga e o proximo Close() apaga a recuperacao sem
             // perguntar. Quem escuta Exportado ja' le' a sessao no estado certo.
-            RestaurarModificadoSeHouveEdicao();
+            RestaurarModificadoSeHouveEdicao(marcarNoEditor: true);
             // Mesmo try/catch (e mesmo motivo) do ModificadoAlterado/Salvo abaixo: o EndSave(0) ja'
             // foi respondido, entao uma excecao de assinante subindo daqui viraria EndSave(2).
             try { Exportado?.Invoke(destino); }
@@ -2630,7 +3013,7 @@ public partial class JanelaEditor : Window
         // acabou de ser gravado.
         if (EhSalvarComo(s, destino, fmt))
         {
-            s.Repontar(destino, fmt);
+            s.Repontar(destino, fmt, texto);
             try { await AtualizarSessaoNoEditorAsync(s.Titulo); }
             catch (Exception ex) { _arquivos.Log("PONTE atualizar sessao no quadro nao entregue (a janela fechou?): " + ex.Message); }
         }
@@ -2639,7 +3022,19 @@ public partial class JanelaEditor : Window
         // queda saber se alguem mexeu no arquivo depois; e o "protegido" passa a dizer se ESTE arquivo saiu cifrado
         // (uma copia sem senha de uma sessao recuperada nao e' mais "documento protegido").
         s.Desvinculada = false;
+        // As opcoes REALMENTE usadas passam a ser as da sessao, com ou sem Repontar: um "Salvar como" no MESMO arquivo trocando de linha
+        // (ANSI -> UTF-8) nao repontava e o Ctrl+S seguinte regravava com as opcoes velhas.
+        if (fmt is FormatoDocumento.Csv or FormatoDocumento.Txt) s.OpcoesTexto = texto;
         RegistrarGravacaoNaSessao(s, destino, protegido: !string.IsNullOrEmpty(senha));
+        // Plano 6, Task 5: a trava e o carimbo passam a ser do arquivo que acabou de ser gravado.
+        TravarArquivoGravado(s, carimboDaTroca);
+        // Formato que nao guarda a formatacao (TXT, CSV, HTML): a faixa avisa a CADA gravacao; no CSV, tambem que so' a planilha ativa foi
+        // gravada (a mais especifica por ultimo: a faixa mostra o ultimo aviso).
+        if (TabelaFormatos.Principal(fmt).PerdeFormatacao)
+        {
+            AvisarUsuario(MensagemPerdeFormatacao(fmt));
+            if (fmt == FormatoDocumento.Csv) AvisarUsuario(MensagemCsvSoPlanilhaAtiva);
+        }
         // O asterisco do titulo e o ModificadoAlterado(false) saem DAQUI (Task 2 do Marco 1 / Plano 2):
         // este e' o unico lugar que zera Modificado sem passar pelo onDocumentModifiedChanged do editor,
         // entao sem isto a casca continuaria mostrando "alterado" num documento recem-gravado.
@@ -2748,12 +3143,41 @@ public partial class JanelaEditor : Window
                 if (!w || !w.__moffice) return "sem quadro";
                 w.__moffice.sessao = null;
                 if (w.AscDesktopEditor && typeof w.AscDesktopEditor.SetDocumentName === "function") w.AscDesktopEditor.SetDocumentName(TITULO);
+                LEGENDA
                 return "ok";
               } catch (e) { return "erro: " + e; }
             })()
-            """.Replace("TITULO", System.Text.Json.JsonSerializer.Serialize(novoTitulo));
+            """.Replace("LEGENDA", JsLegendaDoCabecalho).Replace("TITULO", System.Text.Json.JsonSerializer.Serialize(novoTitulo));
         var r = await ExecutarJsAsync(js);
         if (r.Trim('"') != "ok") _arquivos.Log("PONTE atualizar sessao no quadro falhou: " + r);
+    }
+
+    /// <summary>Plano 6, Task 7 (A10): o cabecalho do editor (<c>#title-doc-name</c>) mostrava o nome do arquivo de origem ("new.docx") mesmo com o
+    /// titulo da sessao ja' "Documento1" ou o nome do arquivo salvo — o <c>SetDocumentName</c> sozinho nao o atualiza. MEDIDO ao vivo (9.4):
+    /// <c>Common.Views.Header.setDocumentCaption(texto)</c> escreve o campo, nos tres editores. Usa a variavel <c>w</c> (quadro do editor) e
+    /// <c>TITULO</c> do script que o embute.</summary>
+    private const string JsLegendaDoCabecalho = """
+        var app = w.DE || w.SSE || w.PE;
+        var vp = app && app.getController && app.getController("Viewport");
+        var cab = vp && vp.getView && vp.getView("Common.Views.Header");
+        if (cab && typeof cab.setDocumentCaption === "function") cab.setDocumentCaption(TITULO);
+        """;
+
+    /// <summary>Poe o titulo da sessao no cabecalho do editor (documento novo recem-pronto). Fora da chamada sincrona do JS que avisou o "pronto".</summary>
+    private async Task DefinirLegendaNoEditorAsync(string titulo)
+    {
+        var js = """
+            (function () {
+              try {
+                var w = window.frames[0];
+                if (!w) return "sem quadro";
+                LEGENDA
+                return "ok";
+              } catch (e) { return "erro: " + e; }
+            })()
+            """.Replace("LEGENDA", JsLegendaDoCabecalho).Replace("TITULO", System.Text.Json.JsonSerializer.Serialize(titulo));
+        var r = (await ExecutarJsAsync(js)).Trim('"');
+        if (r != "ok") _arquivos.Log("PONTE legenda do cabecalho falhou: " + r);
     }
 
     /// <summary>Costura de teste (fix round 3): o <c>EndSave</c> ao editor LANCA, como numa janela que fechou no meio do
@@ -2816,7 +3240,7 @@ public partial class JanelaEditor : Window
         var escolha = EscolherDestino(_sessao.Formato);
         if (escolha is null) return ResultadoSalvar.Cancelado;
         // SalvarComoAsync LANCA quando a gravacao falha: daqui para baixo a exportacao deu certo.
-        var r = await SalvarComoAsync(escolha.Caminho, escolha.Formato);
+        var r = await SalvarComoAsync(escolha.Caminho, escolha.Formato, escolha.Texto);
         if (escolha.Assinar) PedirAssinatura(escolha.Caminho, escolha.Formato);
         return r;
     }
@@ -2858,7 +3282,7 @@ public partial class JanelaEditor : Window
     /// FECHAMENTO, onde exportar nao grava o documento editavel — ver <see cref="DecidirFechamentoAsync"/>.</param>
     private DestinoSalvar? EscolherDestino(FormatoDocumento documento, FormatoDocumento? preSelecionado = null, bool permitirExportacao = true)
     {
-        var filtro = FiltroSalvar(documento, permitirExportacao);
+        var (filtro, indiceDoFiltro) = FiltroEIndice(documento, preSelecionado ?? documento, permitirExportacao, _sessao?.OpcoesTexto);
         var sugerido = preSelecionado ?? documento;
         if (EscolherDestinoParaTeste is not null) return EscolherDestinoParaTeste(filtro, sugerido);
         var dlg = new Microsoft.Win32.SaveFileDialog
@@ -2872,119 +3296,17 @@ public partial class JanelaEditor : Window
             Filter = filtro,
             // Sem isto o diálogo abre sempre no PRIMEIRO filtro (OOXML) mesmo quando o formato sugerido é o
             // ODF ou o PDF — o usuário vê "Documento do Word" selecionado ao salvar um ODT.
-            FilterIndex = IndiceDoFiltro(sugerido),
+            FilterIndex = indiceDoFiltro,
             AddExtension = true,
             OverwritePrompt = true,
         };
         var inicial = _sessao!.Novo
-            ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            ? (!string.IsNullOrWhiteSpace(PastaInicialDoNovo) && Directory.Exists(PastaInicialDoNovo)
+                ? PastaInicialDoNovo : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments))
             : Path.GetDirectoryName(Path.GetFullPath(_sessao.ArquivoOrigem));
         if (!string.IsNullOrEmpty(inicial)) dlg.InitialDirectory = inicial;
         if (dlg.ShowDialog(this) != true) return null;
         // O formato sai do INDICE da linha escolhida (as tres linhas de PDF tem a mesma extensao): ver DestinoDoDialogo.
         return DestinoDoDialogo(dlg.FileName, dlg.FilterIndex, documento, permitirExportacao);
     }
-
-    /// <summary>
-    /// Traduz o que o usuario escolheu no dialogo (<paramref name="caminho"/> + <c>FilterIndex</c> base 1) no
-    /// <see cref="DestinoSalvar"/>. Puro (`internal static`, testado sem janela). Linhas de <see cref="FiltroSalvar"/>:
-    /// 1 = OOXML, 2 = ODF, 3 = PDF, 4 = PDF/A, 5 = "PDF assinado com mPDF".
-    /// <list type="bullet">
-    /// <item>1 e 2: pela extensao, como sempre foi (extensao desconhecida = <paramref name="sugerido"/>).</item>
-    /// <item>3, 4 e 5: pelo indice. Uma extensao de DOCUMENTO digitada vence (o usuario escreveu "a.odt" com a linha
-    /// PDF escolhida: grava ODT, comportamento de antes); na linha 5 o <c>Assinar</c> vem junto, para o host avisar que
-    /// nada foi enviado para assinar (<see cref="MensagemAssinarSalvouDocumento"/>). Senao o nome termina em <c>.pdf</c> (acrescentado se faltar
-    /// — nunca grava PDF com outra extensao).</item>
-    /// <item>Sem exportacao (caminho do FECHAMENTO) ou sessao que ja' e' PDF (filtro de uma linha so'): nao ha linhas
-    /// de PDF por indice, tudo pela extensao — o fechamento nao muda.</item>
-    /// </list>
-    /// </summary>
-    internal static DestinoSalvar DestinoDoDialogo(string caminho, int filterIndex, FormatoDocumento sugerido, bool permitirExportacao)
-    {
-        FormatoDocumento? daExtensao;
-        try { daExtensao = FormatoDocumentoExtensoes.DaExtensao(caminho); }
-        catch (ErroConversao) { daExtensao = null; }  // o usuario digitou o nome inteiro com extensao desconhecida
-        var linhaDePdf = permitirExportacao && !sugerido.EhExportacao()
-            && filterIndex is IndiceFiltroPdf or IndiceFiltroPdfA or IndiceFiltroPdfAssinado;
-        if (!linhaDePdf) return new DestinoSalvar(caminho, daExtensao ?? sugerido);
-        // Extensao de documento digitada na linha "PDF assinado": grava o DOCUMENTO e leva o Assinar junto so' para o
-        // host AVISAR que nada foi para assinar (revisao final do Plano 4; ver PedirAssinatura).
-        if (daExtensao is { } doc && !doc.EhExportacao()) return new DestinoSalvar(caminho, doc, Assinar: filterIndex == IndiceFiltroPdfAssinado);
-        var pdf = daExtensao == FormatoDocumento.Pdf ? caminho : caminho + ".pdf";
-        return filterIndex switch
-        {
-            IndiceFiltroPdfA => DestinoPdfA(pdf),
-            IndiceFiltroPdfAssinado => new DestinoSalvar(pdf, FormatoDocumento.Pdf, Assinar: true),
-            _ => new DestinoSalvar(pdf, FormatoDocumento.Pdf),
-        };
-    }
-
-    /// <summary>
-    /// Como a linha "PDF/A" do "Salvar como" gera o arquivo — o UNICO lugar dessa decisao (S6 do Plano 4).
-    /// Hoje e' a decisao <b>A</b>: o proprio x2t exporta PDF/A (<see cref="FormatoDocumento.PdfA"/>), pelo mesmo
-    /// caminho de exportacao do PDF (sessao nao repontada, <see cref="Exportado"/>, sem senha). O pedido real ao x2t e'
-    /// <c>m_nFormatTo = 513</c> + <c>m_bIsPDFA = true</c> (<see cref="X2tConversor"/>): 521 a partir do Editor.bin sai com
-    /// codigo 88 (MEDIDO). O arquivo DECLARA PDF/A-2A no XMP (<c>pdfaid:part 2</c>, <c>conformance A</c>); se ele e'
-    /// conforme e' a Task 1/S6 que valida, no veraPDF, contra esse perfil declarado. Se reprovar (decisao <b>B</b>), a
-    /// troca e' SO' aqui: devolver
-    /// <c>FormatoDocumento.Pdf</c> com uma marca de "converter pelo mPDF (/pdfa)" no <see cref="DestinoSalvar"/>.
-    /// </summary>
-    private static DestinoSalvar DestinoPdfA(string pdf) => new(pdf, FormatoDocumento.PdfA);
-
-    /// <summary>Nome (sem extensao) que o dialogo "Salvar como" sugere: o titulo generico de um documento novo; o
-    /// nome do original com " (recuperado)" numa sessao recuperada desvinculada (I2 da revisao final do Plano 3 —
-    /// aceitar o nome sugerido nunca sobrescreve o original alterado); senao o nome do original. `internal static`
-    /// para o teste puro.</summary>
-    internal static string NomeSugerido(SessaoDocumento s) =>
-        s.Novo ? s.Titulo
-        : s.Desvinculada ? Path.GetFileNameWithoutExtension(s.ArquivoOrigem) + " (recuperado)"
-        : Path.GetFileNameWithoutExtension(s.ArquivoOrigem);
-
-    private const string FiltroTexto = "Documento do Word (*.docx)|*.docx|Documento de texto ODF (*.odt)|*.odt";
-    private const string FiltroPdf = "PDF (*.pdf)|*.pdf";
-    // Plano 4, Task 2: as tres linhas de PDF tem a MESMA extensao — o formato sai do indice (DestinoDoDialogo).
-    private const string FiltroPdfA = "PDF/A (*.pdf)|*.pdf";
-    private const string FiltroPdfAssinado = "PDF assinado com mPDF (*.pdf)|*.pdf";
-    private const int IndiceFiltroPdf = 3, IndiceFiltroPdfA = 4, IndiceFiltroPdfAssinado = 5;
-
-    /// <summary>
-    /// Filtro do <c>SaveFileDialog</c> para o formato do documento. A ordem de cada linha e' OOXML, ODF e — so'
-    /// com <paramref name="permitirExportacao"/> — PDF, PDF/A e "PDF assinado com mPDF" (Plano 4, Task 2). O
-    /// <see cref="IndiceDoFiltro"/> e o <see cref="DestinoDoDialogo"/> dependem dessa ordem: as tres linhas de PDF
-    /// tem a mesma extensao, entao o formato escolhido so' se sabe pelo indice.
-    ///
-    /// <paramref name="permitirExportacao"/> e' <c>false</c> no caminho de FECHAMENTO: ali o usuario pediu
-    /// "Salvar" para NAO perder o documento, e PDF nao salva documento nenhum — e' exportacao, a sessao
-    /// continua no original e a janela fecharia apagando a recuperacao (achado Critico da revisao final do
-    /// Plano 2). `internal` para o teste puro poder comparar as duas versoes do filtro sem abrir janela.
-    ///
-    /// Formato de exportacao com <paramref name="permitirExportacao"/> falso (uma sessao cujo formato e' PDF,
-    /// que este editor nem abre) nao tem par editavel: cai no filtro de TEXTO, o unico destino que ainda
-    /// preserva o que o usuario escreveu. Nunca devolve filtro vazio — um dialogo sem filtro nenhum seria
-    /// pior do que um destino inesperado.
-    /// </summary>
-    internal static string FiltroSalvar(FormatoDocumento f, bool permitirExportacao = true)
-    {
-        var documento = f.DocType() switch
-        {
-            "word" => FiltroTexto,
-            "cell" => "Pasta de trabalho do Excel (*.xlsx)|*.xlsx|Planilha ODF (*.ods)|*.ods",
-            "slide" => "Apresentação do PowerPoint (*.pptx)|*.pptx|Apresentação ODF (*.odp)|*.odp",
-            _ => null,  // PDF: nao e' formato de DOCUMENTO — so' existe como exportacao
-        };
-        if (!permitirExportacao) return documento ?? FiltroTexto;
-        return documento is null ? FiltroPdf : documento + "|" + FiltroPdf + "|" + FiltroPdfA + "|" + FiltroPdfAssinado;
-    }
-
-    /// <summary>Posição do formato dentro de <see cref="FiltroSalvar"/> — <b>base 1</b>, que é o que o
-    /// <c>SaveFileDialog.FilterIndex</c> usa: 1 = OOXML, 2 = ODF, 3 = PDF, 4 = PDF/A, 5 = PDF com
-    /// <paramref name="assinar"/>. Numa sessão que já é PDF (filtro de uma linha só, que este editor nem abre) o
-    /// índice de PDF passa do fim, e o diálogo cai na primeira linha — que ali é o próprio PDF.</summary>
-    internal static int IndiceDoFiltro(FormatoDocumento f, bool assinar = false) => f switch
-    {
-        FormatoDocumento.Odt or FormatoDocumento.Ods or FormatoDocumento.Odp => 2,
-        FormatoDocumento.Pdf => assinar ? IndiceFiltroPdfAssinado : IndiceFiltroPdf,
-        FormatoDocumento.PdfA => IndiceFiltroPdfA,
-        _ => 1,
-    };
 }

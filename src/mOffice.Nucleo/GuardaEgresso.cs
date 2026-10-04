@@ -21,7 +21,8 @@ namespace mOffice.Nucleo;
 /// </summary>
 public sealed class GuardaEgresso
 {
-    public static readonly string[] OrigensPermitidas = ["https://moffice.local/", "https://moffice-doc.local/", "https://moffice-poc.local/", CatalogoNoEditor.Origem, "file:///", "ascdesktop://"];
+    /// <summary><c>https://moffice-dic.local/</c> (Plano 6, Task 8): dicionarios de hifenizacao, pasta LOCAL do motor mapeada pela janela.</summary>
+    public static readonly string[] OrigensPermitidas = ["https://moffice.local/", "https://moffice-doc.local/", "https://moffice-poc.local/", "https://moffice-dic.local/", CatalogoNoEditor.Origem, "file:///", "ascdesktop://"];
 
     /// <summary>
     /// Servidor local opcional para as origens PERMITIDAS que ninguem mais atende — o esquema nativo

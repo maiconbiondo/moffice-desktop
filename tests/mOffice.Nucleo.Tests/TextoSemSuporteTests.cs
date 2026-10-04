@@ -10,7 +10,8 @@ namespace mOffice.Nucleo.Tests;
 /// carregamento ficava para sempre; MEDIDO: "Imagem da URL" NAO passa por DownloadFiles neste build — la' ele so' e'
 /// usado no modo de criptografia) e "Comparar"/"Combinar" com documento de arquivo
 /// (<c>asc_CompareDocumentFile</c>/<c>asc_MergeDocumentFile</c> -> dialogo "word"). Prova: faixa pt-BR, nenhuma acao longa
-/// sobrando, nenhum erro de JS nem asc_onError critico, e a edicao continua.
+/// sobrando, nenhum erro de JS nem asc_onError critico, e a edicao continua. Plano 6, Task 8: comparar/combinar DE ARQUIVO passou a ter
+/// suporte (PonteArquivosDoEditorJanelaTests); aqui fica o cancelamento do dialogo "word" (nenhuma faixa, nada preso).
 /// </summary>
 [Collection(JanelaReal.Nome)]
 public class TextoSemSuporteTests
@@ -48,6 +49,8 @@ public class TextoSemSuporteTests
                 j.AvisoAoUsuario += m => avisos.Add(m);
                 // Comparar/combinar NAO pode abrir o dialogo de imagem do host (ele nao deixaria escolher um .docx).
                 j.EscolherImagemParaTeste = () => throw new InvalidOperationException("nao devia abrir o dialogo de imagem");
+                var filtros = new List<string>();
+                j.EscolherArquivoParaTeste = (f, _) => { filtros.Add(f); return null; };   // o usuario cancela o dialogo
                 j.Show();
                 await j.AbrirAsync(docx);
                 Assert.Equal("true", await EditorReal.Esperar(j, EditorReal.ProntoNoEditor, "true", 300));
@@ -72,16 +75,23 @@ public class TextoSemSuporteTests
                 _saida.WriteLine("depois de comparar/combinar por URL: " + carga);
                 Assert.StartsWith("acoes=0 mascara=false", carga);
 
-                // 2) Comparar e Combinar "de arquivo" (web-apps: api.asc_CompareDocumentFile/asc_MergeDocumentFile(opcoes)).
+                // 2) Comparar e Combinar "de arquivo" (web-apps: api.asc_CompareDocumentFile/asc_MergeDocumentFile(opcoes)): dialogo "word" do
+                //    host (Plano 6, Task 8), cancelado — nenhuma faixa e nada preso.
+                //    Um de cada vez: o editor guarda UM dialogo pendente (o segundo, pedido antes de o primeiro responder, seria ignorado).
                 avisos.Clear();
-                Assert.Equal("ok", (await j.ExecutarJsAsync(EditorReal.NoEditor("""
-                        var o = w.AscCommonWord && w.AscCommonWord.ComparisonOptions ? new w.AscCommonWord.ComparisonOptions() : undefined;
-                        api.asc_CompareDocumentFile(o);
-                        api.asc_MergeDocumentFile(o);
-                        return "ok";
-                    """))).Trim('"'));
-                for (var i = 0; i < 50 && avisos.Count < 2; i++) await Task.Delay(100);
-                Assert.Equal([JanelaEditor.MensagemCompararDocumento, JanelaEditor.MensagemCompararDocumento], avisos);
+                foreach (var chamada in new[] { "asc_CompareDocumentFile", "asc_MergeDocumentFile" })
+                {
+                    var antes = filtros.Count;
+                    Assert.Equal("ok", (await j.ExecutarJsAsync(EditorReal.NoEditor("""
+                            var o = w.AscCommonWord && w.AscCommonWord.ComparisonOptions ? new w.AscCommonWord.ComparisonOptions() : undefined;
+                            api.CHAMADA(o);
+                            return "ok";
+                        """.Replace("CHAMADA", chamada)))).Trim('"'));
+                    for (var i = 0; i < 50 && filtros.Count == antes; i++) await Task.Delay(100);
+                    await Task.Delay(300);   // a resposta (cancelado) chega ao editor
+                }
+                Assert.Equal(["word", "word"], filtros);
+                Assert.Empty(avisos);
 
                 await Task.Delay(300);
                 carga = (await j.ExecutarJsAsync(EstadoDeCarga)).Trim('"').Replace("\\\"", "\"");
@@ -135,18 +145,27 @@ public class TextoSemSuporteTests
                 Assert.Equal([JanelaEditor.MensagemBaixarArquivos], avisos);
                 Assert.Equal("chamado {}", (await j.ExecutarJsAsync(EditorReal.NoEditor(LerCallback))).Trim('"'));
 
+                // Plano 6, Task 8: loadLocalFile/CompareDocumentFile/MergeDocumentFile com caminho que NAO veio do dialogo do host: recusados
+                // (callback nulo, nada convertido), sem faixa — o caso com suporte esta' em PonteArquivosDoEditorJanelaTests.
                 await Chamar(Callback + "w.AscDesktopEditor.loadLocalFile(\"C:\\\\x.csv\", cb); return 'ok';");
-                Assert.Equal([JanelaEditor.MensagemImportarTexto], avisos);
+                Assert.Empty(avisos);
                 Assert.Equal("chamado null", (await j.ExecutarJsAsync(EditorReal.NoEditor(LerCallback))).Trim('"'));
 
                 await Chamar("w.AscDesktopEditor.CompareDocumentFile(\"C:\\\\x.docx\", {}); return 'ok';");
-                Assert.Equal([JanelaEditor.MensagemCompararDocumento], avisos);
+                Assert.Empty(avisos);
                 await Chamar("w.AscDesktopEditor.MergeDocumentFile(\"C:\\\\x.docx\", {}); return 'ok';");
-                Assert.Equal([JanelaEditor.MensagemCompararDocumento], avisos);
+                Assert.Empty(avisos);
 
+                // Dialogo "csv/txt" cancelado: callback com "" e nenhuma faixa.
+                j.EscolherArquivoParaTeste = (_, _) => null;
                 await Chamar(Callback + "w.AscDesktopEditor.OpenFilenameDialog(\"csv/txt\", false, cb); return 'ok';");
-                Assert.Equal([JanelaEditor.MensagemImportarTexto], avisos);
-                Assert.Equal("true", (await j.ExecutarJsAsync(EditorReal.NoEditor("return String(w.__cb === 'chamado \\\"\\\"');"))).Trim('"'));
+                Assert.Empty(avisos);
+                Assert.Equal("true", await EditorReal.Esperar(j, EditorReal.NoEditor("return String(w.__cb === 'chamado \\\"\\\"');"), "true", 30));
+
+                // Dialogo de audio/video (IsSupportMedia = false): nenhum dialogo, faixa e callback com "".
+                await Chamar(Callback + "w.AscDesktopEditor.OpenFilenameDialog(\"audio\", false, cb); return 'ok';");
+                Assert.Equal([JanelaEditor.MensagemMidiaSemSuporte], avisos);
+                Assert.Equal("true", await EditorReal.Esperar(j, EditorReal.NoEditor("return String(w.__cb === 'chamado \\\"\\\"');"), "true", 30));
 
                 // Controle: uma chave desconhecida do aviso "semSuporte" nao vira faixa (so' log).
                 await Chamar("w.chrome.webview.hostObjects.sync.ponte.Avisar('semSuporte', 'chave-inexistente'); return 'ok';");

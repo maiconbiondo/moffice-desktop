@@ -10,6 +10,16 @@ public class X2tXmlTests
     /// nenhum" (%TEMP%, stderr) nao pode ser enganado por outro teste rodando em paralelo com a mesma senha.</summary>
     internal static string SenhaUnica(string rotulo) => $"{rotulo}-{Guid.NewGuid():N}";
 
+    [Fact] // PL-01: o salvar (Editor.bin -> arquivo) leva m_nLcid=1046, senao o cache das formulas de texto sai em ingles
+    public void XmlDeBin_LevaLcidPtBr()
+    {
+        var xml = Conversor().XmlDeBin(@"C:\r\Editor.bin", FormatoDocumento.Xlsx, @"C:\d\a.xlsx", temChanges: true, @"C:\t", jsonParams: null);
+        Assert.Equal("1046", xml.Element("m_nLcid")?.Value);
+    }
+
+    [Fact] // a constante e' a do pt-BR (literal, nao lida de outro lugar do produto)
+    public void LcidPadrao_EhPtBr() => Assert.Equal(1046, X2tConversor.LcidPadrao);
+
     [Fact] // sem jsonParams o XML do salvar fica identico ao de hoje (nenhum m_sJsonParams)
     public void XmlDeBin_SemJson_SemElemento()
         => Assert.Null(Conversor().XmlDeBin("a.bin", FormatoDocumento.Pdf, "b.pdf", true, "t", null).Element("m_sJsonParams"));
@@ -25,7 +35,7 @@ public class X2tXmlTests
     {
         var nomes = Conversor().XmlDeBin("a.bin", FormatoDocumento.Pdf, "b.pdf", false, "t", "{}").Elements().Select(e => e.Name.LocalName).ToList();
         Assert.Equal(["m_sFileFrom", "m_sFileTo", "m_nFormatTo", "m_bFromChanges", "m_bDontSaveAdditional", "m_sAllFontsPath",
-            "m_nCsvTxtEncoding", "m_nCsvDelimiter", "m_nDoctParams", "m_sJsonParams", "m_sFontDir", "m_sTempDir"], nomes.Take(12));
+            "m_nCsvTxtEncoding", "m_nCsvDelimiter", "m_nDoctParams", "m_nLcid", "m_sJsonParams", "m_sFontDir", "m_sTempDir"], nomes.Take(13));
     }
 
     [Fact] // PDF/A (Plano 4, Task 2): o x2t 9.4 nao converte Editor.bin com m_nFormatTo 521 (codigo 88, MEDIDO); o pedido
@@ -101,6 +111,11 @@ public class X2tXmlTests
     [InlineData(FormatoDocumento.Ods)]
     [InlineData(FormatoDocumento.Pptx)]
     [InlineData(FormatoDocumento.Odp)]
+    // Plano 6, Task 2: macro, modelo e apresentacao de slides (medidos: todos cifram)
+    [InlineData(FormatoDocumento.Docm)] [InlineData(FormatoDocumento.Dotx)] [InlineData(FormatoDocumento.Dotm)] [InlineData(FormatoDocumento.Ott)]
+    [InlineData(FormatoDocumento.Xlsm)] [InlineData(FormatoDocumento.Xltx)] [InlineData(FormatoDocumento.Xltm)] [InlineData(FormatoDocumento.Ots)]
+    [InlineData(FormatoDocumento.Pptm)] [InlineData(FormatoDocumento.Potx)] [InlineData(FormatoDocumento.Potm)] [InlineData(FormatoDocumento.Ppsx)]
+    [InlineData(FormatoDocumento.Ppsm)] [InlineData(FormatoDocumento.Otp)]
     public async Task Senha_SalvarMantemProtecao_PorFormato(FormatoDocumento alvo)
     {
         Skip.If(!File.Exists(MotorDeTeste.Localizar().X2t), "motor nao obtido");
@@ -119,6 +134,8 @@ public class X2tXmlTests
             await conv.ParaBinAsync(origem, rec);
             var destino = Path.Combine(pasta, "saida." + alvo.Extensao());
             await conv.DeBinAsync(rec, alvo, destino, senhaSalvar: "s3gr3d0");
+            // E o validador aceita o conteiner cifrado (OLE) deste formato — senao o salvar o recusaria.
+            ValidadorDePacote.Validar(destino, alvo, cifrado: true);
             var e = await Assert.ThrowsAsync<ErroConversao>(() => conv.ParaBinAsync(destino, Path.Combine(pasta, "sem")));
             Assert.Equal(X2tConversor.CodigoProtegido, e.CodigoSaida);
             var bin = await conv.ParaBinAsync(destino, Path.Combine(pasta, "com"), senha: "s3gr3d0");
@@ -126,6 +143,12 @@ public class X2tXmlTests
         }
         finally { try { Directory.Delete(pasta, true); } catch { } }
     }
+
+    [Theory] // RTF e HTML nao guardam senha (MEDIDO: o x2t ignora o m_sSavePassword); legado nunca e' gravado
+    [InlineData(FormatoDocumento.Rtf)] [InlineData(FormatoDocumento.Html)] [InlineData(FormatoDocumento.Doc)]
+    [InlineData(FormatoDocumento.Xls)] [InlineData(FormatoDocumento.Ppt)] [InlineData(FormatoDocumento.Xlsb)] [InlineData(FormatoDocumento.Txt)]
+    [InlineData(FormatoDocumento.Csv)]
+    public void FormatoGuardaSenha_NaoParaRtfHtmlELegado(FormatoDocumento f) => Assert.False(X2tConversor.FormatoGuardaSenha(f));
 
     [Fact] // PDF e PDF/A nunca levam a senha do documento (fix round 1: PJe/e-SAJ recusam PDF com senha; PDF/A proibe)
     public void FormatoGuardaSenha_PdfNao()
@@ -173,4 +196,54 @@ public class X2tXmlTests
         }
         finally { try { Directory.Delete(pasta, true); } catch { } }
     }
+
+    [Fact] // salvar CSV com as opcoes escolhidas substitui os 46/4 fixos e leva o lcid
+    public void XmlDeBin_ComOpcoesTexto_UsaAsOpcoes()
+    {
+        var xml = Conversor().XmlDeBin(@"C:\r\Editor.bin", FormatoDocumento.Csv, @"C:\d\a.csv", true, @"C:\t", null, null, OpcoesTexto.CsvExcelPtBr);
+        Assert.Equal(("44", "2", "1046"), (xml.Element("m_nCsvTxtEncoding")?.Value, xml.Element("m_nCsvDelimiter")?.Value, xml.Element("m_nLcid")?.Value));
+        Assert.Equal("260", xml.Element("m_nFormatTo")?.Value);
+    }
+
+    [Fact] // sem opcoes de texto o salvar continua com os fixos de antes (inofensivos para os outros formatos)
+    public void XmlDeBin_SemOpcoesTexto_MantemOsFixos()
+    {
+        var xml = Conversor().XmlDeBin(@"C:\r\Editor.bin", FormatoDocumento.Xlsx, @"C:\d\a.xlsx", true, @"C:\t", null);
+        Assert.Equal(("46", "4", "1046"), (xml.Element("m_nCsvTxtEncoding")?.Value, xml.Element("m_nCsvDelimiter")?.Value, xml.Element("m_nLcid")?.Value));
+    }
+
+    [Fact] // TXT: UTF-8 sem delimitador (0)
+    public void XmlDeBin_Txt_Utf8SemDelimitador()
+    {
+        var xml = Conversor().XmlDeBin("a.bin", FormatoDocumento.Txt, "b.txt", true, "t", null, null, OpcoesTexto.TxtUtf8);
+        Assert.Equal(("46", "0"), (xml.Element("m_nCsvTxtEncoding")?.Value, xml.Element("m_nCsvDelimiter")?.Value));
+    }
+
+    [Fact] // o "Outro" do dialogo (m_nCsvDelimiterChar) vai no XML de abrir e de salvar, so' quando existe
+    public void XmlComDelimitadorOutro()
+    {
+        var o = new OpcoesTexto(44, OpcoesTexto.SemDelimitador, DelimitadorChar: "|");
+        Assert.Equal("|", Conversor().XmlParaBin(@"C:\u\a.csv", @"C:\r\Editor.bin", @"C:\t", null, o).Element("m_nCsvDelimiterChar")?.Value);
+        Assert.Equal("|", Conversor().XmlDeBin("a.bin", FormatoDocumento.Csv, "b.csv", true, "t", null, null, o).Element("m_nCsvDelimiterChar")?.Value);
+        Assert.Null(Conversor().XmlParaBin(@"C:\u\a.csv", @"C:\r\Editor.bin", @"C:\t", null, OpcoesTexto.CsvExcelPtBr).Element("m_nCsvDelimiterChar"));
+        Assert.Null(Conversor().XmlDeBin("a.bin", FormatoDocumento.Csv, "b.csv", true, "t", null, null, OpcoesTexto.CsvExcelPtBr).Element("m_nCsvDelimiterChar"));
+    }
+
+    [Fact] // abrir CSV leva codificacao/delimitador/lcid no XML do ParaBin; sem opcoes, nenhum dos tres
+    public void XmlParaBin_ComOpcoesTexto()
+    {
+        var com = Conversor().XmlParaBin(@"C:\u\a.csv", @"C:\r\Editor.bin", @"C:\t", null, OpcoesTexto.CsvExcelPtBr);
+        Assert.Equal(("44", "2", "1046"), (com.Element("m_nCsvTxtEncoding")?.Value, com.Element("m_nCsvDelimiter")?.Value, com.Element("m_nLcid")?.Value));
+        // MEDIDO: com m_nFormatFrom o x2t sai com 88 (sem ele deduz CSV/TXT pela extensao): nunca vai no XML
+        Assert.Null(com.Element("m_nFormatFrom"));
+        var sem = Conversor().XmlParaBin(@"C:\u\a.docx", @"C:\r\Editor.bin", @"C:\t", null, null);
+        Assert.Null(sem.Element("m_nCsvTxtEncoding")); Assert.Null(sem.Element("m_nCsvDelimiter")); Assert.Null(sem.Element("m_nLcid")); Assert.Null(sem.Element("m_nFormatFrom"));
+        Assert.Equal("8192", sem.Element("m_nFormatTo")?.Value);
+    }
+
+    [Theory] // Plano 6, Task 8: convertFile pede o canvas do editor (8193 word, 8194 cell); fora de 8192-8195 vira o generico
+    [InlineData(8193, "8193")] [InlineData(8194, "8194")] [InlineData(8195, "8195")] [InlineData(8192, "8192")]
+    [InlineData(513, "8192")] [InlineData(8196, "8192")] [InlineData(0, "8192")]
+    public void XmlParaBin_FormatoCanvas(int pedido, string esperado) =>
+        Assert.Equal(esperado, Conversor().XmlParaBin(@"C:\u\a.docx", @"C:\r\Editor.bin", @"C:\t", null, null, pedido).Element("m_nFormatTo")?.Value);
 }

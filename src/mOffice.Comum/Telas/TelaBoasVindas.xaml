@@ -85,8 +85,14 @@
                 <Border Width="440" CornerRadius="9" Padding="14,10" Margin="0,0,0,14"
                         Background="{DynamicResource Cor.Erro}"
                         Visibility="{Binding MensagemErro, Converter={StaticResource NuloParaColapsado}}">
-                    <TextBlock Text="{Binding MensagemErro}" TextWrapping="Wrap" FontSize="12"
-                               Foreground="{DynamicResource Cor.PrimariaTextoSobre}"/>
+                    <StackPanel>
+                        <TextBlock Text="{Binding MensagemErro}" TextWrapping="Wrap" FontSize="12"
+                                   Foreground="{DynamicResource Cor.PrimariaTextoSobre}"/>
+                        <!-- Recente ausente (Plano 6, Task 10): nunca sai da lista sozinho; o usuario decide. -->
+                        <Button x:Name="BotaoRemoverRecenteAusente" Content="Remover da lista" Command="{Binding RemoverRecenteAusenteCommand}"
+                                Style="{StaticResource mOffice.Button.Toolbar}" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                Visibility="{Binding TemRecenteAusente, Converter={StaticResource VerdadeiroParaVisivel}}"/>
+                    </StackPanel>
                 </Border>
 
                 <!-- Drop zone azul (o Border do WPF nao traceja; borda continua azul translucida, como no
@@ -104,7 +110,7 @@
                             <Button Command="{Binding NovoCommand}" Style="{StaticResource mOffice.Button.Primario}" Margin="0,0,5,0">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock FontFamily="{DynamicResource Fonte.PhosphorBold}" FontSize="15" Text="{icons:PhosphorIcon plus}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Novo documento" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding RotuloNovo}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding AbrirCommand}" Style="{StaticResource mOffice.Button.Contornado}" Margin="5,0,0,0">
@@ -166,6 +172,65 @@
                     </ItemsControl>
                 </StackPanel>
 
+                <!-- Galeria de modelos (Plano 6, Task 9): "Seus modelos" (pasta de Configuracoes → Modelos / %APPDATA%\Microsoft\Templates)
+                     primeiro, depois os "Modelos do mOffice" (os do motor, em portugues); so' os primeiros + "Mais modelos…" e ABAIXO dos documentos recuperados (que ficam na primeira tela). Clique = documento novo a partir do modelo. -->
+                <StackPanel x:Name="PainelModelos" Width="440" Margin="0,34,0,0"
+                            Visibility="{Binding TemModelos, Converter={StaticResource VerdadeiroParaVisivel}}">
+                    <TextBlock Text="MODELOS" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Cor.TextoSecundario}"
+                               Opacity="0.8" Margin="2,0,0,10"/>
+                    <ItemsControl ItemsSource="{Binding ModelosVisiveis}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Margin="0,0,0,4" HorizontalContentAlignment="Stretch" Cursor="Hand"
+                                        Command="{Binding DataContext.NovoDoModeloCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="Transparent" BorderBrush="{DynamicResource Cor.BordaSutil}"
+                                                    BorderThickness="1" CornerRadius="9" Padding="11,8">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Cor.SuperficieHover}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" FontFamily="{DynamicResource Fonte.Phosphor}" FontSize="18"
+                                                   Foreground="{DynamicResource Cor.IconeAzul}" Text="{icons:PhosphorIcon file-text}"
+                                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Nome}" FontSize="12.5" Foreground="{DynamicResource Cor.TextoPrimario}"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" FontSize="10.5" Foreground="{DynamicResource Cor.TextoSecundario}" Opacity="0.75"
+                                                   VerticalAlignment="Center" Margin="10,0,0,0">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="Modelos do mOffice"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DoUsuario}" Value="True">
+                                                            <Setter Property="Text" Value="Seus modelos"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Command="{Binding MaisModelosCommand}" Content="Mais modelos…" HorizontalAlignment="Left" Margin="0,2,0,0"
+                            Style="{StaticResource mOffice.Button.Toolbar}"
+                            Visibility="{Binding TemMaisModelos, Converter={StaticResource VerdadeiroParaVisivel}}"/>
+                </StackPanel>
+
                 <!-- Recentes (a MESMA lista de Recentes.Listar(): fixados primeiro). Cada linha tem UM
                      botao de abrir (nome+pasta+hora) e, ao lado — NAO dentro dele —, fixar e remover:
                      botao dentro de botao embaralha o roteamento do clique. -->
@@ -213,7 +278,7 @@
                                                 <TextBlock Text="{Binding Caminho, Converter={StaticResource CaminhoParaPasta}}" FontSize="10.5"
                                                            Foreground="{DynamicResource Cor.TextoSecundario}" Opacity="0.75" TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="{Binding Quando, StringFormat=dd/MM HH:mm}" FontSize="10.5"
+                                            <TextBlock Grid.Column="2" Text="{Binding Quando, StringFormat=dd/MM/yyyy HH:mm}" FontSize="10.5"
                                                        Foreground="{DynamicResource Cor.TextoSecundario}" Opacity="0.75"
                                                        VerticalAlignment="Center" Margin="10,0,0,0"/>
                                         </Grid>
@@ -231,6 +296,47 @@
                                             Command="{Binding DataContext.RemoverCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                             CommandParameter="{Binding}"/>
                                 </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Nao salvos recentemente (Plano 6, Task 10): o que o "Nao salvar" do fechamento guardou por 4 dias (como o "Recuperar documentos
+                     nao salvos" do Office). Abrir = recupera (volta modificado); Excluir e' ato do usuario. Abaixo dos recentes. -->
+                <StackPanel x:Name="PainelNaoSalvos" Width="440" Margin="0,34,0,0"
+                            Visibility="{Binding TemNaoSalvos, Converter={StaticResource VerdadeiroParaVisivel}}">
+                    <TextBlock Text="NÃO SALVOS RECENTEMENTE (ÚLTIMOS 4 DIAS)" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Cor.TextoSecundario}"
+                               Opacity="0.8" Margin="2,0,0,10"/>
+                    <ItemsControl ItemsSource="{Binding NaoSalvos}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,4" BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="1" CornerRadius="9" Padding="11,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" FontFamily="{DynamicResource Fonte.Phosphor}" FontSize="18"
+                                                   Foreground="{DynamicResource Cor.IconeAzul}" Text="{icons:PhosphorIcon file-text}"
+                                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Titulo}" FontSize="12.5" Foreground="{DynamicResource Cor.TextoPrimario}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding UltimaAlteracaoLocal, StringFormat=dd/MM/yyyy HH:mm}" FontSize="10.5"
+                                                       Foreground="{DynamicResource Cor.TextoSecundario}" Opacity="0.75"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="Abrir" Style="{StaticResource BotaoRecuperar}"
+                                                VerticalAlignment="Center" Margin="8,0,0,0"
+                                                Command="{Binding DataContext.AbrirNaoSalvoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"/>
+                                        <Button Grid.Column="3" Content="Excluir" Style="{StaticResource BotaoDescartar}"
+                                                VerticalAlignment="Center" Margin="6,0,0,0"
+                                                Command="{Binding DataContext.ExcluirNaoSalvoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

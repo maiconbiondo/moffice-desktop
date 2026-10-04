@@ -1,15 +1,18 @@
 ﻿<#
 .SYNOPSIS
-  Registro de DESENVOLVIMENTO no Explorer: faz o duplo clique (na verdade, "Abrir com") de um .docx/.odt/
-  .xlsx/.ods/.pptx/.odp chegar aos executaveis compilados de src/, sem instalador.
+  Registro de DESENVOLVIMENTO no Explorer: faz o duplo clique (na verdade, "Abrir com") de um documento do
+  Office (.docx/.doc/.dotx/.xlsx/.xls/.pptx/.ppsx/.odt/...) chegar aos executaveis compilados de src/, sem instalador.
 
 .DESCRIPTION
   Escreve em HKCU\Software\Classes (so' o usuario atual, nunca a maquina) os MESMOS ProgIDs que o
   instalador do Plano 5 vai escrever em HKLM:
 
-      mOffice.Texto.docx    mOffice.Texto.odt       -> mTexto.exe
-      mOffice.Planilha.xlsx mOffice.Planilha.ods    -> mPlanilha.exe
-      mOffice.Slides.pptx   mOffice.Slides.odp      -> mSlides.exe
+      mOffice.Texto.<ext>     -> mTexto.exe      (docx, docm, dotx, dotm, doc, dot, odt, ott, rtf)
+      mOffice.Planilha.<ext>  -> mPlanilha.exe   (xlsx, xlsm, xltx, xltm, xls, xlt, xlsb, ods, ots)
+      mOffice.Slides.<ext>    -> mSlides.exe     (pptx, pptm, potx, potm, ppsx, ppsm, ppt, pps, pot, odp, otp)
+
+  A lista vem de tools\installer\associacoes.json (gerado da TabelaFormatos). Modelos abrem com /modelo (documento novo) e
+  apresentacoes de slides com /apresentar, e ganham o verbo edit (abre o proprio arquivo).
 
   Cada ProgID ganha DefaultIcon = "<exe>,0" e shell\open\command = "<exe>" "%1", e cada extensao ganha o
   ProgID em OpenWithProgids.
@@ -31,7 +34,7 @@
   Tambem torna os apps o padrao do duplo clique para o usuario atual (ver DESCRIPTION).
 
 .PARAMETER Remover
-  Apaga SO' o que este script cria (os seis ProgIDs, os seis valores de OpenWithProgids e, se o padrao
+  Apaga SO' o que este script cria (os ProgIDs, os valores de OpenWithProgids e, se o padrao
   do usuario ainda for o nosso ProgID, devolve o valor anterior). Nao toca em mais nada da extensao.
 
 .EXAMPLE
@@ -53,14 +56,14 @@ $valorAnterior = 'mOffice.PadraoAnterior'
 $capRaiz = 'HKCU:\Software\mOffice.Dev'
 $registrados = 'HKCU:\Software\RegisteredApplications'
 
-$registros = @(
-    @{ ProgId = 'mOffice.Texto.docx';    Ext = '.docx'; Projeto = 'mTexto';    Exe = 'mTexto.exe';    Nome = 'Documento do Word (mTexto)' },
-    @{ ProgId = 'mOffice.Texto.odt';     Ext = '.odt';  Projeto = 'mTexto';    Exe = 'mTexto.exe';    Nome = 'Documento OpenDocument (mTexto)' },
-    @{ ProgId = 'mOffice.Planilha.xlsx'; Ext = '.xlsx'; Projeto = 'mPlanilha'; Exe = 'mPlanilha.exe'; Nome = 'Pasta de trabalho do Excel (mPlanilha)' },
-    @{ ProgId = 'mOffice.Planilha.ods';  Ext = '.ods';  Projeto = 'mPlanilha'; Exe = 'mPlanilha.exe'; Nome = 'Planilha OpenDocument (mPlanilha)' },
-    @{ ProgId = 'mOffice.Slides.pptx';   Ext = '.pptx'; Projeto = 'mSlides';   Exe = 'mSlides.exe';   Nome = 'Apresentação do PowerPoint (mSlides)' },
-    @{ ProgId = 'mOffice.Slides.odp';    Ext = '.odp';  Projeto = 'mSlides';   Exe = 'mSlides.exe';   Nome = 'Apresentação OpenDocument (mSlides)' }
-)
+# Plano 6, Task 2: a lista de ProgIDs e' UMA so' (tools\installer\associacoes.json, GERADO da TabelaFormatos pelo teste
+# AssociacoesGeradas_EmDia) — o mesmo que o instalador e o RMM usam. Nada de lista literal repetida aqui.
+$lista = Join-Path $raiz 'tools\installer\associacoes.json'
+if (-not (Test-Path -LiteralPath $lista)) { throw "Lista de associacoes ausente: $lista" }
+$registros = @((Get-Content -LiteralPath $lista -Raw -Encoding UTF8 | ConvertFrom-Json) | ForEach-Object {
+    @{ ProgId = [string]$_.ProgId; Ext = [string]$_.Ext; Projeto = [string]$_.App; Exe = [string]$_.Exe; Nome = [string]$_.Nome;
+       Modelo = [bool]$_.Modelo; Apresentar = [bool]$_.Apresentar }
+})
 
 # NUNCA `New-Item -Force` numa chave de registro: se ela ja' existe, o provedor do PowerShell a RECRIA
 # VAZIA (apaga valores e subchaves). Foi assim que uma versao deste script zerou
@@ -165,7 +168,17 @@ foreach ($r in $registros) {
     GarantirChave $comando
     # Aspas nos DOIS: o caminho de desenvolvimento tem espaco (ex.: "C:\Meus Projetos") e o arquivo do usuario
     # tambem pode ter — sem elas o app recebe o caminho partido em varios argumentos.
-    Set-ItemProperty -Path $comando -Name '(default)' -Value ('"' + $exe + '" "%1"')
+    # Modelo (.dotx...) abre como documento NOVO (/modelo) e apresentacao de slides (.ppsx...) ja' apresenta (/apresentar); os dois
+    # ganham o verbo edit para abrir o PROPRIO arquivo (como o instalador gera, a partir da mesma tabela).
+    $verbo = ''
+    if ($r.Modelo) { $verbo = '/modelo ' } elseif ($r.Apresentar) { $verbo = '/apresentar ' }
+    Set-ItemProperty -Path $comando -Name '(default)' -Value ('"' + $exe + '" ' + $verbo + '"%1"')
+    if ($r.Modelo -or $r.Apresentar) {
+        $editar = Join-Path $chave 'shell\edit'
+        GarantirChave (Join-Path $editar 'command')
+        Set-ItemProperty -Path $editar -Name '(default)' -Value 'Editar'
+        Set-ItemProperty -Path (Join-Path $editar 'command') -Name '(default)' -Value ('"' + $exe + '" "%1"')
+    }
 
     $abrirCom = Join-Path $classes ($r.Ext + '\OpenWithProgids')
     GarantirChave $abrirCom

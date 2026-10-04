@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
-    Define mTexto, mPlanilha e mSlides como apps PADRAO de .docx/.odt, .xlsx/.ods e .pptx/.odp na maquina,
-    pela politica de associacoes do Windows. Porte do aplicar-padrao-pdf.ps1 do mPDF.
+    Define mTexto, mPlanilha e mSlides como apps PADRAO dos documentos do Office (as 17 extensoes marcadas "Rmm" em
+    tools/installer/associacoes.json: .docx/.docm/.doc/.odt/.rtf/.dotx, .xlsx/.xlsm/.xls/.ods/.xltx, .pptx/.pptm/.ppsx/.ppt/.odp/.potx)
+    na maquina, pela politica de associacoes do Windows. Porte do aplicar-padrao-pdf.ps1 do mPDF.
 
 .DESCRIPTION
     Roda pelo mass-command do RMM (agente LocalSystem). O Windows 10/11 NAO deixa um app se tornar padrao
@@ -9,15 +10,18 @@
       1. grava o XML de associacoes em %ProgramData%\mOffice\moffice-padrao-office.xml;
       2. aponta a politica HKLM\SOFTWARE\Policies\Microsoft\Windows\System\DefaultAssociationsConfiguration
          para esse XML.
-    O Windows entao FORCA as seis extensoes a cada logon, para TODOS os usuarios (sobrepoe a escolha
+    O Windows entao FORCA essas extensoes a cada logon, para TODOS os usuarios (sobrepoe a escolha
     manual). Vale no PROXIMO logon.
 
     A politica e UM valor so, que aponta para UM arquivo. Se ela ja apontar para outro XML (ex.: o do mPDF,
-    com .pdf -> mPDF), as associacoes de la que NAO sao das seis extensoes do mOffice sao COPIADAS para o
+    com .pdf -> mPDF), as associacoes de la que NAO sao das extensoes do mOffice sao COPIADAS para o
     XML do mOffice - sobrescrever o valor sem isso apagaria o padrao de .pdf em silencio. Ordem recomendada:
     aplicar o do mPDF ANTES deste (o do mPDF sobrescreve, nao junta).
 
-    Pre-requisito: mOffice instalado com a task "associar" (registra os seis ProgIDs). Sem eles o script
+    A lista de extensoes vem de tools/installer/associacoes.json (GERADO da TabelaFormatos pelo teste AssociacoesGeradas_EmDia): o
+    script le' esse arquivo (-Lista), nada de lista literal repetida aqui. Rodando o script fora do repositorio, leve o JSON junto.
+
+    Pre-requisito: mOffice instalado com a task "associar" (registra os ProgIDs). Sem eles o script
     sai com 1 e nao mexe em nada: apontar a politica para ProgIDs inexistentes faz o Windows desfazer o
     padrao do usuario.
 
@@ -30,26 +34,35 @@
     So para teste: onde gravar o XML (padrao: %ProgramData%\mOffice).
 .PARAMETER ChaveClasses
     So para teste: onde procurar os ProgIDs (padrao: HKLM:\SOFTWARE\Classes).
+.PARAMETER Lista
+    A lista de associacoes (padrao: tools/installer/associacoes.json, ao lado deste script no repositorio).
 #>
 [CmdletBinding()]
 param(
     [string]$ChavePolitica = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System',
     [string]$Pasta = (Join-Path $env:ProgramData 'mOffice'),
-    [string]$ChaveClasses = 'HKLM:\SOFTWARE\Classes'
+    [string]$ChaveClasses = 'HKLM:\SOFTWARE\Classes',
+    [string]$Lista = ''
 )
 $ErrorActionPreference = 'Stop'
 
 $valor = 'DefaultAssociationsConfiguration'
 $xmlPath = Join-Path $Pasta 'moffice-padrao-office.xml'
-# As MESMAS seis linhas de tools/rmm/moffice-padrao-office.xml e dos ProgIDs do moffice.iss (InstaladorTests).
-$nossas = @(
-    @{ Ext = '.docx'; ProgId = 'mOffice.Texto.docx';    App = 'mTexto' },
-    @{ Ext = '.odt';  ProgId = 'mOffice.Texto.odt';     App = 'mTexto' },
-    @{ Ext = '.xlsx'; ProgId = 'mOffice.Planilha.xlsx'; App = 'mPlanilha' },
-    @{ Ext = '.ods';  ProgId = 'mOffice.Planilha.ods';  App = 'mPlanilha' },
-    @{ Ext = '.pptx'; ProgId = 'mOffice.Slides.pptx';   App = 'mSlides' },
-    @{ Ext = '.odp';  ProgId = 'mOffice.Slides.odp';    App = 'mSlides' }
-)
+# As MESMAS linhas de tools/rmm/moffice-padrao-office.xml e dos ProgIDs do moffice.iss: as que o JSON gerado da TabelaFormatos marca
+# com Rmm (InstaladorTests.AssociacoesGeradas_EmDia).
+# $PSScriptRoot no corpo (nao no padrao do param, que o PowerShell 5.1 avalia vazio com -File).
+if (-not $Lista) { $Lista = Join-Path $PSScriptRoot '..\installer\associacoes.json' }
+if (-not (Test-Path -LiteralPath $Lista)) {
+    Write-Output "mOffice: a lista de associacoes ($Lista) nao foi encontrada. Nada foi alterado."
+    exit 1
+}
+$nossas = @((Get-Content -LiteralPath $Lista -Raw | ConvertFrom-Json) | Where-Object { $_.Rmm } | ForEach-Object {
+    @{ Ext = [string]$_.Ext; ProgId = [string]$_.ProgId; App = [string]$_.App }
+})
+if ($nossas.Count -eq 0) {
+    Write-Output "mOffice: a lista de associacoes ($Lista) nao traz nenhuma extensao para o padrao. Nada foi alterado."
+    exit 1
+}
 $nossasExt = @($nossas | ForEach-Object { $_.Ext })
 
 $faltando = @($nossas | Where-Object { -not (Test-Path -LiteralPath (Join-Path $ChaveClasses $_.ProgId)) } | ForEach-Object { $_.ProgId })
@@ -70,7 +83,8 @@ if ($atual -and (Test-Path -LiteralPath $atual)) {
         $existente = New-Object System.Xml.XmlDocument
         $existente.Load($atual)
         foreach ($a in @($existente.SelectNodes('/DefaultAssociations/Association'))) {
-            if ($nossasExt -notcontains $a.GetAttribute('Identifier').ToLowerInvariant()) { $outras.Add($a) }
+            # Nossa = extensao da lista OU ProgID mOffice.* (uma politica de versao antiga do mOffice nao deixa lixo para tras).
+            if (($nossasExt -notcontains $a.GetAttribute('Identifier').ToLowerInvariant()) -and ($a.GetAttribute('ProgId') -notlike 'mOffice.*')) { $outras.Add($a) }
         }
     }
     catch {

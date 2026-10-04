@@ -18,20 +18,34 @@ public class InstaladorTests
 {
     private static string Raiz => AplicativoOfficeTests.RaizRepo();
     private static string CaminhoIss => Path.Combine(Raiz, "tools", "installer", "moffice.iss");
-    private static string Iss => File.ReadAllText(CaminhoIss);
+    // Plano 6, Task 2: as associacoes saem de tools/installer/associacoes.iss (gerado da TabelaFormatos), incluido pelo
+    // moffice.iss. O texto que os testes varrem e' o do .iss COM o #include expandido, como o ISCC o enxerga.
+    private static string Iss => ExpandirIncludes(File.ReadAllText(CaminhoIss), Path.GetDirectoryName(CaminhoIss)!);
+
+    private static string ExpandirIncludes(string texto, string pasta) =>
+        Regex.Replace(texto, @"^#include ""([^""]+)""[ \t]*\r?$",
+            m => File.ReadAllText(Path.Combine(pasta, m.Groups[1].Value)), RegexOptions.Multiline);
 
     /// <summary>GUID do produto: fixo para sempre (uma versao nova com outro AppId instalaria AO LADO da antiga).</summary>
     private const string AppIdFixo = "BEA3C718-DFC3-42D6-BF84-41C61CCAC772";
 
+    /// <summary>Plano 6, Task 2: a lista vem da TabelaFormatos (uma linha por extensao que abre). Um teste LITERAL
+    /// (<see cref="ProgIds_Cardinalidade"/>) guarda o tamanho, para uma linha apagada da tabela nao sumir em silencio.</summary>
     internal static readonly (string ProgId, string Ext, string Exe)[] ProgIds =
-    [
-        ("mOffice.Texto.docx", ".docx", "mTexto.exe"),
-        ("mOffice.Texto.odt", ".odt", "mTexto.exe"),
-        ("mOffice.Planilha.xlsx", ".xlsx", "mPlanilha.exe"),
-        ("mOffice.Planilha.ods", ".ods", "mPlanilha.exe"),
-        ("mOffice.Slides.pptx", ".pptx", "mSlides.exe"),
-        ("mOffice.Slides.odp", ".odp", "mSlides.exe"),
-    ];
+        mOffice.Conversor.TabelaFormatos.Todas.Where(i => i.ProgId is not null)
+            .Select(i => (i.ProgId!, i.Extensao, GeradorAssociacoes.Exe(i.DocType))).ToArray();
+
+    /// <summary>As que o RMM forca como padrao (<c>PadraoNoRmm</c>).</summary>
+    internal static readonly (string ProgId, string Ext, string Exe)[] ProgIdsRmm =
+        mOffice.Conversor.TabelaFormatos.Todas.Where(i => i.ProgId is not null && i.PadraoNoRmm)
+            .Select(i => (i.ProgId!, i.Extensao, GeradorAssociacoes.Exe(i.DocType))).ToArray();
+
+    [Fact] // 9 de texto + 9 de planilha + 11 de apresentacao que abrem (conferido no plano; com o CSV da Task 3 sobe para 30)
+    public void ProgIds_Cardinalidade()
+    {
+        Assert.Equal(30, ProgIds.Length);
+        Assert.Equal(17, ProgIdsRmm.Length);
+    }
 
     /// <summary>Linhas de uma secao (<c>[Setup]</c>, <c>[Run]</c>...), sem comentarios nem linhas vazias.</summary>
     internal static List<string> Secao(string iss, string nome)
@@ -151,17 +165,26 @@ public class InstaladorTests
 
     // ---- [Registry] ---------------------------------------------------------------------------------------
 
-    [Fact] // os 6 ProgIDs, com icone e abrir; OpenWithProgids; Capabilities; RegisteredApplications; SupportedTypes
-    public void SeisProgIds_EAplicativoRegistrado()
+    [Fact] // os ProgIDs da tabela, com icone e abrir; OpenWithProgids; Capabilities; RegisteredApplications; SupportedTypes
+    public void ProgIds_EAplicativoRegistrado()
     {
         var reg = Secao(Iss, "Registry");
         Assert.All(reg, l => Assert.EndsWith("Tasks: associar", l)); // tudo preso a task
         foreach (var (progId, ext, exe) in ProgIds)
         {
             var app = exe[..^4];
+            var info = mOffice.Conversor.TabelaFormatos.DaExtensao(ext)!;
+            // O verbo open: modelo = /modelo "%1" (documento NOVO), apresentacao de slides = /apresentar "%1", o resto = "%1".
+            var verbo = info.Modelo ? "/modelo " : info.Apresentar ? "/apresentar " : "";
             Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\Classes\\{progId}\"; ValueType: string; ValueName: \"\";") && l.Contains("Flags: uninsdeletekey"));
-            Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\Classes\\{progId}\\DefaultIcon\"") && l.Contains($"ValueData: \"\"\"{{app}}\\{exe}\"\",0\""));
-            Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\Classes\\{progId}\\shell\\open\\command\"") && l.Contains($"ValueData: \"\"\"{{app}}\\{exe}\"\" \"\"%1\"\"\""));
+            // Plano 6, Task 10: icone por TIPO (o .ico por papel instalado em {app}\Icones\Documentos), nao mais o do .exe em todo arquivo.
+            Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\Classes\\{progId}\\DefaultIcon\"") && l.Contains($"ValueData: \"\"\"{{app}}\\Icones\\Documentos\\{GeradorAssociacoes.ArquivoIcone(info)}\"\",0\""));
+            // ...e o verbo Imprimir (processo efemero /imprimir) em todo ProgID.
+            Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\Classes\\{progId}\\shell\\print\\command\"") && l.Contains($"ValueData: \"\"\"{{app}}\\{exe}\"\" /imprimir \"\"%1\"\"\""));
+            Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\Classes\\{progId}\\shell\\open\\command\"") && l.Contains($"ValueData: \"\"\"{{app}}\\{exe}\"\" {verbo}\"\"%1\"\"\""));
+            // Modelo e apresentacao tambem tem o verbo edit (abre o PROPRIO arquivo para edicao, como o Word/PowerPoint).
+            var temEdit = reg.Any(l => l.Contains($"Subkey: \"Software\\Classes\\{progId}\\shell\\edit\\command\"") && l.Contains($"ValueData: \"\"\"{{app}}\\{exe}\"\" \"\"%1\"\"\""));
+            Assert.Equal(info.Modelo || info.Apresentar, temEdit);
             Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\Classes\\{ext}\\OpenWithProgids\"; ValueType: string; ValueName: \"{progId}\"; ValueData: \"\"; Flags: uninsdeletevalue;"));
             Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\mOffice\\{app}\\Capabilities\\FileAssociations\"; ValueType: string; ValueName: \"{ext}\"; ValueData: \"{progId}\";"));
             Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\Classes\\Applications\\{exe}\\SupportedTypes\"; ValueType: string; ValueName: \"{ext}\";"));
@@ -173,26 +196,66 @@ public class InstaladorTests
             Assert.Contains(reg, l => l.Contains($"Subkey: \"Software\\RegisteredApplications\"; ValueType: string; ValueName: \"mOffice.{app}\"; ValueData: \"Software\\mOffice\\{app}\\Capabilities\"; Flags: uninsdeletevalue;"));
         }
         // Chaves COMPARTILHADAS nunca levam uninsdeletekey (desinstalar apagaria o registro de outros programas).
-        Assert.DoesNotContain(reg, l => (l.Contains("\\OpenWithProgids\"") || l.Contains("\"Software\\RegisteredApplications\"")) && l.Contains("uninsdeletekey"));
-        // Exatamente os 6 ProgIDs, nenhum a mais.
+        // Plano 6, Task 10: a chave ShellNew da extensao tambem e' compartilhada com o Office.
+        Assert.DoesNotContain(reg, l => (l.Contains("\\OpenWithProgids\"") || l.Contains("\\ShellNew\"") || l.Contains("\"Software\\RegisteredApplications\"")) && Regex.IsMatch(l, @"uninsdeletekey(?!ifempty)"));
+        // Exatamente os ProgIDs da tabela, nenhum a mais.
         var progIdsNoIss = reg.Select(l => Regex.Match(l, @"Subkey: ""Software\\Classes\\(mOffice\.[^""\\]+)""")).Where(m => m.Success).Select(m => m.Groups[1].Value).Distinct().Order();
         Assert.Equal(ProgIds.Select(p => p.ProgId).Order(), progIdsNoIss);
     }
 
-    [Fact] // mesma lista de ProgIDs no registro de desenvolvimento, no XML e no script do RMM
+    [Fact] // a lista de ProgIDs e' UMA so' (associacoes.json, gerado da tabela): o registro de desenvolvimento e o script do RMM a LEEM
+           // (nada de lista literal repetida nos .ps1), e o XML de referencia traz as 17 linhas PadraoNoRmm
     public void ProgIds_BatemComDevERmm()
     {
         var dev = File.ReadAllText(Path.Combine(Raiz, "tools", "explorer", "registrar-dev.ps1"));
         var xml = XDocument.Load(Path.Combine(Raiz, "tools", "rmm", "moffice-padrao-office.xml"));
         var aplicar = File.ReadAllText(Path.Combine(Raiz, "tools", "rmm", "aplicar-padrao-office.ps1"));
         var noXml = xml.Root!.Elements("Association").Select(a => ((string)a.Attribute("Identifier")!, (string)a.Attribute("ProgId")!, (string)a.Attribute("ApplicationName")!)).ToList();
-        Assert.Equal(6, noXml.Count);
-        foreach (var (progId, ext, exe) in ProgIds)
+        Assert.Equal(17, noXml.Count);
+        foreach (var (progId, ext, exe) in ProgIdsRmm) Assert.Contains((ext, progId, exe[..^4]), noXml);
+        Assert.DoesNotContain(noXml, a => !ProgIdsRmm.Any(p => p.Ext == a.Item1)); // nenhuma a mais
+        // os dois scripts leem o JSON gerado
+        Assert.Contains(@"installer\associacoes.json", dev);
+        Assert.Contains("ConvertFrom-Json", dev);
+        Assert.Contains(@"installer\associacoes.json", aplicar);
+        Assert.Contains("ConvertFrom-Json", aplicar);
+        // e o JSON traz as 30 (com o papel de cada uma), na mesma ordem da tabela
+        var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(Raiz, "tools", "installer", "associacoes.json"))).RootElement;
+        Assert.Equal(ProgIds.Select(p => (p.Ext, p.ProgId, p.Exe[..^4])),
+            json.EnumerateArray().Select(e => (e.GetProperty("Ext").GetString()!, e.GetProperty("ProgId").GetString()!, e.GetProperty("App").GetString()!)));
+    }
+
+    [Fact] // os tres arquivos gerados estao em dia com a TabelaFormatos; MOFFICE_REGENERAR=1 reescreve (e falha mesmo assim)
+    public void AssociacoesGeradas_EmDia()
+    {
+        var alvos = new[] {
+            (Path.Combine(Raiz, "tools", "installer", "associacoes.iss"), GeradorAssociacoes.Iss()),
+            (Path.Combine(Raiz, "tools", "installer", "associacoes.json"), GeradorAssociacoes.Json()),
+            (Path.Combine(Raiz, "tools", "rmm", "moffice-padrao-office.xml"), GeradorAssociacoes.XmlRmm()) };
+        if (Environment.GetEnvironmentVariable("MOFFICE_REGENERAR") == "1")
         {
-            Assert.Matches($@"ProgId = '{Regex.Escape(progId)}';\s+Ext = '{Regex.Escape(ext)}';\s+Projeto = '{exe[..^4]}'", dev);
-            Assert.Contains((ext, progId, exe[..^4]), noXml);
-            Assert.Matches($@"Ext = '{Regex.Escape(ext)}';\s+ProgId = '{Regex.Escape(progId)}';\s+App = '{exe[..^4]}'", aplicar);
+            // BOM no .iss (o Inno le' UTF-8 so' com ele: ha' acento nas descricoes) e no .json (o PowerShell 5.1 le' certo); o XML de
+            // referencia do RMM fica SEM BOM, como o que o aplicar grava (o parser de politica do Windows nao gosta de BOM).
+            foreach (var (arq, conteudo) in alvos) File.WriteAllText(arq, conteudo, new System.Text.UTF8Encoding(!arq.EndsWith(".xml", StringComparison.Ordinal)));
+            Assert.Fail("arquivos regenerados: confira o diff e rode de novo sem MOFFICE_REGENERAR");
         }
+        foreach (var (arq, conteudo) in alvos) Assert.Equal(conteudo, File.ReadAllText(arq).Replace("\r\n", "\n")); // o git muda o fim de linha por maquina
+    }
+
+    [Fact] // o moffice.iss INCLUI o gerado (e nao repete nenhuma linha de ProgID escrita a mao)
+    public void MofficeIss_IncluiAsAssociacoesGeradas()
+    {
+        var bruto = File.ReadAllText(CaminhoIss);
+        Assert.Contains("#include \"associacoes.iss\"", bruto);
+        Assert.DoesNotContain("Software\\Classes\\mOffice.Texto.docx", bruto);
+        Assert.Contains("Software\\Classes\\mOffice.Texto.docx", Iss); // mas o texto expandido, que o ISCC enxerga, tem
+    }
+
+    [Fact] // o desinstalador tira da politica do RMM TODAS as associacoes do mOffice (nao so' as seis de antes)
+    public void Rmm_DesinstalacaoReconheceOsProgIdsDoMOffice()
+    {
+        var nossa = Codigo("AssociacaoDoMOffice");
+        Assert.Contains("Pos('ProgId=\"mOffice.', L) > 0", nossa);
     }
 
     // ---- [Files] / [InstallDelete] / [Dirs] ---------------------------------------------------------------
@@ -445,10 +508,11 @@ public class InstaladorTests
         Assert.Contains("Exit;", ramo);
         Assert.True(iIlegivel < p.IndexOf("RegDeleteValue(", StringComparison.Ordinal));
         Assert.Contains("if FileExists(Xml) or EhLink(Xml) then", p);
-        // as seis extensoes, iguais as do XML de referencia do RMM
+        // Plano 6, Task 2: a associacao "do mOffice" e' a que aponta para um ProgID mOffice.* (as 17 do XML de referencia do RMM
+        // e as seis de antes), em vez de uma lista de extensoes repetida aqui.
         var nossa = Codigo("AssociacaoDoMOffice");
-        foreach (var (_, ext, _) in ProgIds) Assert.Contains($"Pos('Identifier=\"{ext}\"', L) > 0", nossa);
-        Assert.Equal(6, Regex.Matches(nossa, "Identifier=").Count);
+        Assert.Contains("Pos('ProgId=\"mOffice.', L) > 0", nossa);
+        Assert.DoesNotContain("Identifier=", nossa);
         // mesmo nome de arquivo que o aplicar grava
         Assert.Contains("$xmlPath = Join-Path $Pasta 'moffice-padrao-office.xml'", File.ReadAllText(Path.Combine(Raiz, "tools", "rmm", "aplicar-padrao-office.ps1")));
         var u = Codigo("CurUninstallStepChanged");
@@ -485,6 +549,8 @@ public class InstaladorTests
             Path.Combine(Raiz, "tools", "rmm", "aplicar-padrao-office.ps1"),
             Path.Combine(Raiz, "tools", "rmm", "remover-padrao-office.ps1"),
             Path.Combine(Raiz, "tools", "rmm", "moffice-padrao-office.xml"),
+            Path.Combine(Raiz, "tools", "installer", "associacoes.iss"),
+            Path.Combine(Raiz, "tools", "installer", "associacoes.json"),
         };
         var segmentos = Raiz.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries);
         // Mesma regra da guarda do tools/export-public.ps1: nomes genericos do Windows (Users, AppData, Temp...) nao
@@ -768,8 +834,8 @@ public class InstaladorTests
         var depois = amb.Associacoes(amb.Xml);
         Assert.Contains((".pdf", "mPDF.Document"), depois);
         Assert.DoesNotContain((".docx", "Outro.Docx"), depois); // a extensao e nossa: vale a do mOffice
-        foreach (var p in ProgIds) Assert.Contains((p.Ext, p.ProgId), depois);
-        Assert.Equal(7, depois.Count);
+        foreach (var p in ProgIdsRmm) Assert.Contains((p.Ext, p.ProgId), depois);
+        Assert.Equal(ProgIdsRmm.Length + 1, depois.Count); // as 17 do RMM + a .pdf do mPDF
         var bytes = File.ReadAllBytes(amb.Xml);
         Assert.False(bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF, "XML da politica sem BOM");
 
@@ -790,7 +856,7 @@ public class InstaladorTests
         amb.RegistrarProgIds();
         using (var k = Registry.CurrentUser.CreateSubKey(amb.Politica)) k.SetValue("OutraPolitica", 1);
         Assert.Equal(0, amb.Rodar("aplicar-padrao-office.ps1").Codigo);
-        Assert.Equal(6, amb.Associacoes(amb.Xml).Count);
+        Assert.Equal(ProgIdsRmm.Length, amb.Associacoes(amb.Xml).Count);
 
         var (c, s) = amb.Rodar("remover-padrao-office.ps1", comClasses: false);
         Assert.True(c == 0, s);

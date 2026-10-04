@@ -1,0 +1,16 @@
+{
+  "descricao": "Configuracao do editor vinda do host do mOffice (Plano 6, Task 6): o editorConfig que o index.html monta passa por window.__moffice.mesclarConfig (ponte-desktop.js), que mescla window.__moffice.configEditor (region pt-BR; ajuda, feedback, sugestao, macros e dicas de novidade desligados) e tira o 'Abrir Local do Arquivo' de documento sem arquivo. Sem o host (sem window.__moffice.mesclarConfig) o comportamento e' o original.",
+  "versaoMotor": "9.4.0.129",
+  "arquivos": [
+    {
+      "arquivo": "editors/web-apps/apps/api/documents/index.html",
+      "trocas": [
+        {
+          "de": "cfg = getEditorConfig(urlParams),",
+          "para": "cfg = (window.__moffice && typeof window.__moffice.mesclarConfig === 'function') ? window.__moffice.mesclarConfig(getEditorConfig(urlParams)) : getEditorConfig(urlParams),",
+          "ocorrencias": 1
+        }
+      ]
+    }
+  ]
+}

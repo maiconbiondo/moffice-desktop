@@ -8,6 +8,8 @@ public partial class DialogoConfiguracoes : Window
     public DialogoConfiguracoes(DialogoConfiguracoesViewModel vm)
     {
         InitializeComponent();
+        // Nao passa da area de trabalho (a janela e' sem moldura e sem redimensionar): o corpo rola, o Fechar fica a' vista.
+        MaxHeight = SystemParameters.WorkArea.Height;
         DataContext = vm;
         // "Instalar agora" com o instalador pronto: o dialogo fecha e o app segue o fechamento (AplicativoOffice).
         // So' existe sob ShowDialog (ver Mostrar), entao DialogResult e' valido aqui.

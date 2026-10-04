@@ -1,0 +1,302 @@
+﻿[
+  {
+    "Ext": ".docx",
+    "ProgId": "mOffice.Texto.docx",
+    "App": "mTexto",
+    "Exe": "mTexto.exe",
+    "Nome": "Documento do Word (mTexto)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".docm",
+    "ProgId": "mOffice.Texto.docm",
+    "App": "mTexto",
+    "Exe": "mTexto.exe",
+    "Nome": "Documento Habilitado para Macro do Word (mTexto)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".dotx",
+    "ProgId": "mOffice.Texto.dotx",
+    "App": "mTexto",
+    "Exe": "mTexto.exe",
+    "Nome": "Modelo do Word (mTexto)",
+    "Rmm": true,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".dotm",
+    "ProgId": "mOffice.Texto.dotm",
+    "App": "mTexto",
+    "Exe": "mTexto.exe",
+    "Nome": "Modelo Habilitado para Macro do Word (mTexto)",
+    "Rmm": false,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".doc",
+    "ProgId": "mOffice.Texto.doc",
+    "App": "mTexto",
+    "Exe": "mTexto.exe",
+    "Nome": "Documento do Word 97-2003 (mTexto)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".dot",
+    "ProgId": "mOffice.Texto.dot",
+    "App": "mTexto",
+    "Exe": "mTexto.exe",
+    "Nome": "Modelo do Word 97-2003 (mTexto)",
+    "Rmm": false,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".odt",
+    "ProgId": "mOffice.Texto.odt",
+    "App": "mTexto",
+    "Exe": "mTexto.exe",
+    "Nome": "Documento de texto ODF (mTexto)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".ott",
+    "ProgId": "mOffice.Texto.ott",
+    "App": "mTexto",
+    "Exe": "mTexto.exe",
+    "Nome": "Modelo de texto ODF (mTexto)",
+    "Rmm": false,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".rtf",
+    "ProgId": "mOffice.Texto.rtf",
+    "App": "mTexto",
+    "Exe": "mTexto.exe",
+    "Nome": "Formato Rich Text (mTexto)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".xlsx",
+    "ProgId": "mOffice.Planilha.xlsx",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "Pasta de trabalho do Excel (mPlanilha)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".xlsm",
+    "ProgId": "mOffice.Planilha.xlsm",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "Pasta de trabalho habilitada para macro do Excel (mPlanilha)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".xltx",
+    "ProgId": "mOffice.Planilha.xltx",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "Modelo do Excel (mPlanilha)",
+    "Rmm": true,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".xltm",
+    "ProgId": "mOffice.Planilha.xltm",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "Modelo habilitado para macro do Excel (mPlanilha)",
+    "Rmm": false,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".xls",
+    "ProgId": "mOffice.Planilha.xls",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "Pasta de trabalho do Excel 97-2003 (mPlanilha)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".xlt",
+    "ProgId": "mOffice.Planilha.xlt",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "Modelo do Excel 97-2003 (mPlanilha)",
+    "Rmm": false,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".xlsb",
+    "ProgId": "mOffice.Planilha.xlsb",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "Pasta de trabalho binária do Excel (mPlanilha)",
+    "Rmm": false,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".ods",
+    "ProgId": "mOffice.Planilha.ods",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "Planilha ODF (mPlanilha)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".ots",
+    "ProgId": "mOffice.Planilha.ots",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "Modelo de planilha ODF (mPlanilha)",
+    "Rmm": false,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".csv",
+    "ProgId": "mOffice.Planilha.csv",
+    "App": "mPlanilha",
+    "Exe": "mPlanilha.exe",
+    "Nome": "CSV (separado por ponto e vírgula) (mPlanilha)",
+    "Rmm": false,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".pptx",
+    "ProgId": "mOffice.Slides.pptx",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Apresentação do PowerPoint (mSlides)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".pptm",
+    "ProgId": "mOffice.Slides.pptm",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Apresentação habilitada para macro do PowerPoint (mSlides)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".potx",
+    "ProgId": "mOffice.Slides.potx",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Modelo do PowerPoint (mSlides)",
+    "Rmm": true,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".potm",
+    "ProgId": "mOffice.Slides.potm",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Modelo habilitado para macro do PowerPoint (mSlides)",
+    "Rmm": false,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".ppsx",
+    "ProgId": "mOffice.Slides.ppsx",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Apresentação de slides do PowerPoint (mSlides)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": true
+  },
+  {
+    "Ext": ".ppsm",
+    "ProgId": "mOffice.Slides.ppsm",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Apresentação de slides habilitada para macro do PowerPoint (mSlides)",
+    "Rmm": false,
+    "Modelo": false,
+    "Apresentar": true
+  },
+  {
+    "Ext": ".ppt",
+    "ProgId": "mOffice.Slides.ppt",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Apresentação do PowerPoint 97-2003 (mSlides)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".pps",
+    "ProgId": "mOffice.Slides.pps",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Apresentação de slides do PowerPoint 97-2003 (mSlides)",
+    "Rmm": false,
+    "Modelo": false,
+    "Apresentar": true
+  },
+  {
+    "Ext": ".pot",
+    "ProgId": "mOffice.Slides.pot",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Modelo do PowerPoint 97-2003 (mSlides)",
+    "Rmm": false,
+    "Modelo": true,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".odp",
+    "ProgId": "mOffice.Slides.odp",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Apresentação ODF (mSlides)",
+    "Rmm": true,
+    "Modelo": false,
+    "Apresentar": false
+  },
+  {
+    "Ext": ".otp",
+    "ProgId": "mOffice.Slides.otp",
+    "App": "mSlides",
+    "Exe": "mSlides.exe",
+    "Nome": "Modelo de apresentação ODF (mSlides)",
+    "Rmm": false,
+    "Modelo": true,
+    "Apresentar": false
+  }
+]

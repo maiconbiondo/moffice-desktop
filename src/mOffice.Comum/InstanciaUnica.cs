@@ -73,6 +73,9 @@ public sealed class InstanciaUnica : IDisposable
 
     public event Action<string>? CaminhoRecebido;
 
+    /// <summary>A segunda instancia recebeu um arquivo que o app nao abre (FMT-05): o caminho absoluto, para a primaria avisar.</summary>
+    public event Action<string>? RejeicaoRecebida;
+
     /// <summary>Uma segunda instancia foi aberta SEM arquivo (menu Iniciar) — fix round 1 da Task 5 do Plano 3: o
     /// app pode estar vivo sem janela nenhuma (esperando uma impressao terminar para encerrar), e antes esse
     /// lancamento morria calado, sem mostrar nada.</summary>
@@ -162,8 +165,10 @@ public sealed class InstanciaUnica : IDisposable
                 // CaminhoRecebido e o consumidor tentaria abrir relativo ao diretorio de trabalho ATUAL
                 // do processo primario -- quase certamente nao e' o que o usuario quis.
                 if (linha == PedidoDeAtivacao) AtivacaoRecebida?.Invoke();
-                else if (!string.IsNullOrWhiteSpace(linha) && Path.IsPathRooted(linha))
+                else if (linha is not null && PedidoDeAbertura.DoPipeRejeitado(linha) is { } rejeitado) RejeicaoRecebida?.Invoke(rejeitado);
+                else if (linha is not null && PedidoDeAbertura.DoPipe(linha) is not null)
                 {
+                    // Plano 6, Task 2: a linha e' o caminho absoluto puro OU "?modelo|<abs>" / "?apresentar|<abs>" (PedidoDeAbertura).
                     CaminhoRecebido?.Invoke(linha);
                 }
             }

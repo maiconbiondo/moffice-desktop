@@ -4,7 +4,8 @@
     Porte do remover-padrao-pdf.ps1 do mPDF.
 
 .DESCRIPTION
-    Roda pelo mass-command do RMM (LocalSystem). Tira do XML do mOffice as seis associacoes do mOffice:
+    Roda pelo mass-command do RMM (LocalSystem). Tira do XML do mOffice as associacoes do mOffice (as de ProgID mOffice.*, que
+    sao as 17 do padrao e as seis de antes):
       - se sobrar associacao de outro app (o aplicar juntou, ex.: .pdf -> mPDF), o XML fica so com elas e a
         politica continua apontando para ele (o padrao de .pdf nao cai junto);
       - se nao sobrar nada, remove o VALOR DefaultAssociationsConfiguration (nunca a chave, que pode ter
@@ -29,7 +30,6 @@ $ErrorActionPreference = 'Stop'
 
 $valor = 'DefaultAssociationsConfiguration'
 $xmlPath = Join-Path $Pasta 'moffice-padrao-office.xml'
-$nossasExt = @('.docx', '.odt', '.xlsx', '.ods', '.pptx', '.odp')
 
 # Link (juncao/symlink) na pasta ou no XML: nao le, nao grava e nao apaga atraves dele (mesma regra do aplicar).
 foreach ($c in @($Pasta, $xmlPath)) {
@@ -60,7 +60,7 @@ if (Test-Path -LiteralPath $xmlPath) {
     $doc = New-Object System.Xml.XmlDocument
     $doc.Load($xmlPath)
     foreach ($a in @($doc.SelectNodes('/DefaultAssociations/Association'))) {
-        if ($nossasExt -contains $a.GetAttribute('Identifier').ToLowerInvariant()) {
+        if ($a.GetAttribute('ProgId') -like 'mOffice.*') {
             [void]$a.ParentNode.RemoveChild($a)
         } else {
             $restantes++

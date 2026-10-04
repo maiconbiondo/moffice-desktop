@@ -49,6 +49,50 @@ public class InstanciaUnicaTests
         Assert.Empty(recebidos);
     }
 
+    [Fact] // Plano 6, Task 2: a linha "?modelo|<caminho absoluto>" passa pelo pipe e chega a CaminhoRecebido intacta; "?modelo|relativo" nao
+    public async Task PipeAceitaPedidoComModo()
+    {
+        var (m, p) = Nomes();
+        using var primeira = new InstanciaUnica(m, p);
+        var recebidos = new List<string>();
+        var primeiro = new TaskCompletionSource<string>();
+        primeira.CaminhoRecebido += c => { lock (recebidos) recebidos.Add(c); primeiro.TrySetResult(c); };
+        Assert.True(primeira.TentarAssumir(null));
+        using (var s = new InstanciaUnica(m, p)) Assert.False(s.TentarAssumir(@"?modelo|m.dotx"));   // relativo: descartado
+        using (var s = new InstanciaUnica(m, p)) Assert.False(s.TentarAssumir(@"?modelo|C:\x\m.dotx"));
+        Assert.Equal(@"?modelo|C:\x\m.dotx", await primeiro.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+        using (var s = new InstanciaUnica(m, p)) Assert.False(s.TentarAssumir(@"?apresentar|C:\x\s.ppsx"));
+        for (var i = 0; i < 50; i++) { lock (recebidos) if (recebidos.Count >= 2) break; await Task.Delay(100); }
+        lock (recebidos) Assert.Equal([@"?modelo|C:\x\m.dotx", @"?apresentar|C:\x\s.ppsx"], recebidos);
+    }
+
+    [Fact] // FMT-05: a segunda instancia manda a rejeicao e a primaria a recebe (RejeicaoRecebida), sem abrir nada
+    public async Task SegundaInstancia_RejeicaoChegaAPrimaria()
+    {
+        var (m, p) = Nomes();
+        using var primeira = new InstanciaUnica(m, p);
+        var rej = new TaskCompletionSource<string>(); var abertos = new List<string>();
+        primeira.RejeicaoRecebida += c => rej.TrySetResult(c);
+        primeira.CaminhoRecebido += abertos.Add;
+        Assert.True(primeira.TentarAssumir(null));
+        using (var s = new InstanciaUnica(m, p)) Assert.False(s.TentarAssumir(PedidoDeAbertura.RejeicaoParaPipe(@"C:\x\a.xlsx")));
+        Assert.Equal(@"C:\x\a.xlsx", await rej.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Empty(abertos);
+    }
+
+    [Fact] // um modo inventado ("?formatar|...") nunca chega a CaminhoRecebido
+    public async Task PipeIgnoraModoDesconhecido()
+    {
+        var (m, p) = Nomes();
+        using var primeira = new InstanciaUnica(m, p);
+        var recebidos = new List<string>();
+        primeira.CaminhoRecebido += recebidos.Add;
+        Assert.True(primeira.TentarAssumir(null));
+        using (var s = new InstanciaUnica(m, p)) Assert.False(s.TentarAssumir(@"?formatar|C:\x\a.docx"));
+        await Task.Delay(500);
+        Assert.Empty(recebidos);
+    }
+
     [Fact] public void Nomes_CarregamAppUsuarioESessao()
     {
         Assert.Contains("mtexto", NomesDeInstancia.Mutex("mtexto")); Assert.Contains(Environment.UserName.Replace('\\', '_'), NomesDeInstancia.Pipe("mtexto"));

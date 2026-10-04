@@ -1,0 +1,406 @@
+{
+  "descricao": "Textos do mPlanilha como no Excel pt-BR (Plano 6, Task 9; achados PL-11/A7): 'Folha' vira 'Planilha' (e 'Folha de Calculo' vira 'Pasta de trabalho'), mais as traducoes erradas do pt.json do motor (Tempo/Dados/Mau/Fatiador...). Uma troca por CHAVE.",
+  "versaoMotor": "9.4.0.129",
+  "arquivos": [
+    {
+      "arquivo": "editors/web-apps/apps/spreadsheeteditor/main/locale/pt.json",
+      "trocas": [
+        {
+          "de": "\"Common.Controllers.Shortcuts.txtDescriptionNextWorksheet\":\"Passe para a próxima folha da planilha.\"",
+          "para": "\"Common.Controllers.Shortcuts.txtDescriptionNextWorksheet\":\"Passe para a próxima planilha.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"Common.Controllers.Shortcuts.txtDescriptionShowFormulas\":\"Exiba funções (não seus valores) em uma folha para imprimi-las.\"",
+          "para": "\"Common.Controllers.Shortcuts.txtDescriptionShowFormulas\":\"Exiba funções (não seus valores) em uma planilha para imprimi-las.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"Common.Views.SearchPanel.textSheet\":\"Folha\"",
+          "para": "\"Common.Views.SearchPanel.textSheet\":\"Planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.DataTab.strSheet\":\"Folha\"",
+          "para": "\"SSE.Controllers.DataTab.strSheet\":\"Planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.LeftMenu.textSheet\":\"Folha\"",
+          "para": "\"SSE.Controllers.LeftMenu.textSheet\":\"Planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.LeftMenu.warnDownloadCsvSheets\":\"O formato CSV não permite salvar um arquivo com várias folhas.<br>Para manter o formato selecionado e salvar apenas a folha atual, pressione Salvar.<br>Para salvar a planilha atual, clique em Cancelar e salve-a em um formato diferente.\"",
+          "para": "\"SSE.Controllers.LeftMenu.warnDownloadCsvSheets\":\"O formato CSV não permite salvar um arquivo com várias planilhas.<br>Para manter o formato selecionado e salvar apenas a planilha atual, pressione Salvar.<br>Para salvar a pasta de trabalho atual, clique em Cancelar e salve-a em um formato diferente.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.errorDeleteRowContainsLockedCell\":\"Você está tentando apagar uma linha que contém uma célula trancada. As células bloqueadas não podem ser apagadas enquanto a folha de trabalho estiver protegida.<br>Para apagar uma célula bloqueada, desproteja a folha. Você poderá ser solicitado a digitar uma senha.\"",
+          "para": "\"SSE.Controllers.Main.errorDeleteRowContainsLockedCell\":\"Você está tentando apagar uma linha que contém uma célula trancada. As células bloqueadas não podem ser apagadas enquanto a planilha estiver protegida.<br>Para apagar uma célula bloqueada, desproteja a planilha. Você poderá ser solicitado a digitar uma senha.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.errorEditView\":\"A vista de folha existente não pode ser editada e as novas não podem ser criadas no momento, pois algumas delas estão sendo editadas.\"",
+          "para": "\"SSE.Controllers.Main.errorEditView\":\"A exibição de planilha existente não pode ser editada e as novas não podem ser criadas no momento, pois algumas delas estão sendo editadas.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.errorFrmlWrongReferences\":\"A função se refere a uma folha que não existe.<br>Verifique os dados e tente novamente.\"",
+          "para": "\"SSE.Controllers.Main.errorFrmlWrongReferences\":\"A função se refere a uma planilha que não existe.<br>Verifique os dados e tente novamente.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.errorLockedWorksheetRename\":\"A folha não pode ser renomeada no momento uma vez que está sendo renomeada por outro usuário\"",
+          "para": "\"SSE.Controllers.Main.errorLockedWorksheetRename\":\"A planilha não pode ser renomeada no momento, pois está sendo renomeada por outro usuário\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.txtSheet\":\"Folha\"",
+          "para": "\"SSE.Controllers.Main.txtSheet\":\"Planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.warnModifyFilter\":\"Você está em um modo em que os filtros são visíveis apenas para você e não são salvos. Você não pode adicionar ou remover filtros. Para salvar sua visualização atual, use a Exibição de Folha na guia Exibir.\"",
+          "para": "\"SSE.Controllers.Main.warnModifyFilter\":\"Você está em um modo em que os filtros são visíveis apenas para você e não são salvos. Você não pode adicionar ou remover filtros. Para salvar sua visualização atual, use a Exibição de Planilha na guia Exibir.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.PivotTable.strSheet\":\"Folha\"",
+          "para": "\"SSE.Controllers.PivotTable.strSheet\":\"Planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Print.strAllSheets\":\"Todas as folhas\"",
+          "para": "\"SSE.Controllers.Print.strAllSheets\":\"Todas as planilhas\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Statusbar.strSheet\":\"Folha\"",
+          "para": "\"SSE.Controllers.Statusbar.strSheet\":\"Planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Statusbar.textSheetViewTip\":\"Você está no modo Visualização da folha. Filtros e classificação são visíveis apenas para você e para aqueles que ainda estão nesta exibição.\"",
+          "para": "\"SSE.Controllers.Statusbar.textSheetViewTip\":\"Você está no modo Visualização da planilha. Filtros e classificação são visíveis apenas para você e para aqueles que ainda estão nesta exibição.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Statusbar.textSheetViewTipFilters\":\"Você está no modo Folha De exibição. Os filtros são visíveis apenas para você e para aqueles que ainda estão nesta visão.\"",
+          "para": "\"SSE.Controllers.Statusbar.textSheetViewTipFilters\":\"Você está no modo Exibição de Planilha. Os filtros são visíveis apenas para você e para aqueles que ainda estão nesta exibição.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.CellSettings.textThisSheet\":\"A partir desta folha de trabalho\"",
+          "para": "\"SSE.Views.CellSettings.textThisSheet\":\"A partir desta planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ChartDataDialog.errorStockChart\":\"Ordem incorreta das linhas. Para construir um gráfico de ações, coloque os dados na folha na seguinte ordem: <br> preço de abertura, preço máximo, preço mínimo, preço de fechamento.\"",
+          "para": "\"SSE.Views.ChartDataDialog.errorStockChart\":\"Ordem incorreta das linhas. Para construir um gráfico de ações, coloque os dados na planilha na seguinte ordem: <br> preço de abertura, preço máximo, preço mínimo, preço de fechamento.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ChartDataRangeDialog.errorStockChart\":\"Ordem incorreta das linhas. Para construir um gráfico de ações, coloque os dados na folha na seguinte ordem: <br> preço de abertura, preço máximo, preço mínimo, preço de fechamento.\"",
+          "para": "\"SSE.Views.ChartDataRangeDialog.errorStockChart\":\"Ordem incorreta das linhas. Para construir um gráfico de ações, coloque os dados na planilha na seguinte ordem: <br> preço de abertura, preço máximo, preço mínimo, preço de fechamento.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.FileMenuPanels.CreateNew.txtBlank\":\"Folha de Cálculo em Branco\"",
+          "para": "\"SSE.Views.FileMenuPanels.CreateNew.txtBlank\":\"Pasta de trabalho em branco\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.FileMenuPanels.MainSettingsGeneral.txtSheetDir\":\"Direção padrão da folha\"",
+          "para": "\"SSE.Views.FileMenuPanels.MainSettingsGeneral.txtSheetDir\":\"Direção padrão da planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.FormatRulesManagerDlg.textThisSheet\":\"Esta folha de trabalho\"",
+          "para": "\"SSE.Views.FormatRulesManagerDlg.textThisSheet\":\"Esta planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.HeaderFooterDialog.textSheet\":\"Nome da folha\"",
+          "para": "\"SSE.Views.HeaderFooterDialog.textSheet\":\"Nome da planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.HyperlinkSettingsDialog.strSheet\":\"Folha\"",
+          "para": "\"SSE.Views.HyperlinkSettingsDialog.strSheet\":\"Planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.HyperlinkSettingsDialog.textSheets\":\"Folhas\"",
+          "para": "\"SSE.Views.HyperlinkSettingsDialog.textSheets\":\"Planilhas\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.MainSettingsPrint.textFitPage\":\"Ajustar folha em uma página\"",
+          "para": "\"SSE.Views.MainSettingsPrint.textFitPage\":\"Ajustar planilha em uma página\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.PrintSettings.textCurrentSheet\":\"Folha atual\"",
+          "para": "\"SSE.Views.PrintSettings.textCurrentSheet\":\"Planilha atual\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.PrintSettings.textFitPage\":\"Ajustar folha em uma página\"",
+          "para": "\"SSE.Views.PrintSettings.textFitPage\":\"Ajustar planilha em uma página\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.PrintSettings.textSettings\":\"Configurações da folha\"",
+          "para": "\"SSE.Views.PrintSettings.textSettings\":\"Configurações da planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.PrintWithPreview.txtCurrentSheet\":\"Folha atual\"",
+          "para": "\"SSE.Views.PrintWithPreview.txtCurrentSheet\":\"Planilha atual\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.PrintWithPreview.txtFitPage\":\"Ajustar folha em uma página\"",
+          "para": "\"SSE.Views.PrintWithPreview.txtFitPage\":\"Ajustar planilha em uma página\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ProtectDialog.txtSheetTitle\":\"Proteger folha\"",
+          "para": "\"SSE.Views.ProtectDialog.txtSheetTitle\":\"Proteger planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ProtectRangesDlg.textProtect\":\"Proteger folha\"",
+          "para": "\"SSE.Views.ProtectRangesDlg.textProtect\":\"Proteger planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.CopyDialog.textMoveBefore\":\"Mover antes da folha\"",
+          "para": "\"SSE.Views.Statusbar.CopyDialog.textMoveBefore\":\"Mover antes da planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.RenameDialog.errNameWrongChar\":\"Um nome de folha não pode conter os seguintes caracteres: \\\\/*?[]: ou o caractere ' como primeiro ou último caractere\"",
+          "para": "\"SSE.Views.Statusbar.RenameDialog.errNameWrongChar\":\"Um nome de planilha não pode conter os seguintes caracteres: \\\\/*?[]: ou o caractere ' como primeiro ou último caractere\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.RenameDialog.labelSheetName\":\"Nome da folha\"",
+          "para": "\"SSE.Views.Statusbar.RenameDialog.labelSheetName\":\"Nome da planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.selectAllSheets\":\"Selecionar todas as folhas\"",
+          "para": "\"SSE.Views.Statusbar.selectAllSheets\":\"Selecionar todas as planilhas\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.sheetIndexText\":\"Folha {0} de {1}\"",
+          "para": "\"SSE.Views.Statusbar.sheetIndexText\":\"Planilha {0} de {1}\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.tipFirst\":\"Deslizar para primeira folha\"",
+          "para": "\"SSE.Views.Statusbar.tipFirst\":\"Rolar até a primeira planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.tipLast\":\"Deslizar para última folha\"",
+          "para": "\"SSE.Views.Statusbar.tipLast\":\"Rolar até a última planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.tipNext\":\"Deslizar lista de folha direita\"",
+          "para": "\"SSE.Views.Statusbar.tipNext\":\"Rolar a lista de planilhas para a direita\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.tipPrev\":\"Deslizar lista de folha esquerda\"",
+          "para": "\"SSE.Views.Statusbar.tipPrev\":\"Rolar a lista de planilhas para a esquerda\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Statusbar.ungroupSheets\":\"Desagrupar folhas\"",
+          "para": "\"SSE.Views.Statusbar.ungroupSheets\":\"Desagrupar planilhas\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Toolbar.textRtlSheet\":\"Folha da direita para a esquerda\"",
+          "para": "\"SSE.Views.Toolbar.textRtlSheet\":\"Planilha da direita para a esquerda\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Toolbar.textThisSheet\":\"A partir desta folha de trabalho\"",
+          "para": "\"SSE.Views.Toolbar.textThisSheet\":\"A partir desta planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Toolbar.textUnProtectSheet\":\"Desproteger a folha\"",
+          "para": "\"SSE.Views.Toolbar.textUnProtectSheet\":\"Desproteger a planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Toolbar.tipRtlSheet\":\"Altere a direção da folha de modo que a primeira coluna fique no lado direito\"",
+          "para": "\"SSE.Views.Toolbar.tipRtlSheet\":\"Altere a direção da planilha de modo que a primeira coluna fique no lado direito\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ViewManagerDlg.textViews\":\"Vistas de folha\"",
+          "para": "\"SSE.Views.ViewManagerDlg.textViews\":\"Exibições de planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ViewManagerDlg.txtTitle\":\"Gerenciador de visualização de folha\"",
+          "para": "\"SSE.Views.ViewManagerDlg.txtTitle\":\"Gerenciador de exibição de planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ViewTab.capBtnSheetView\":\"Visualização de folha\"",
+          "para": "\"SSE.Views.ViewTab.capBtnSheetView\":\"Visualização de planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ViewTab.tipClose\":\"Fechar visualização de folha\"",
+          "para": "\"SSE.Views.ViewTab.tipClose\":\"Fechar visualização de planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ViewTab.tipCreate\":\"Criar visualização de folha\"",
+          "para": "\"SSE.Views.ViewTab.tipCreate\":\"Criar visualização de planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ViewTab.tipSheetView\":\"Visualização de folha\"",
+          "para": "\"SSE.Views.ViewTab.tipSheetView\":\"Visualização de planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.WatchDialog.textSheet\":\"Folha\"",
+          "para": "\"SSE.Views.WatchDialog.textSheet\":\"Planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.WBProtection.hintProtectSheet\":\"Proteger folha\"",
+          "para": "\"SSE.Views.WBProtection.hintProtectSheet\":\"Proteger planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.WBProtection.txtProtectSheet\":\"Proteger folha\"",
+          "para": "\"SSE.Views.WBProtection.txtProtectSheet\":\"Proteger planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.WBProtection.txtSheetUnlockDescription\":\"Digite uma senha para desproteger a folha\"",
+          "para": "\"SSE.Views.WBProtection.txtSheetUnlockDescription\":\"Digite uma senha para desproteger a planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.WBProtection.txtSheetUnlockTitle\":\"Desproteger a folha\"",
+          "para": "\"SSE.Views.WBProtection.txtSheetUnlockTitle\":\"Desproteger a planilha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.errorChangeOnProtectedSheet\":\"A célula ou gráfico que você está tentando alterar está em uma página protegida. <br> Para fazer uma alteração, desproteja a página. Você pode ser solicitado a inserir uma senha.\"",
+          "para": "\"SSE.Controllers.Main.errorChangeOnProtectedSheet\":\"A célula ou gráfico que você está tentando alterar está em uma planilha protegida. <br> Para fazer uma alteração, desproteja a planilha. Você pode ser solicitado a inserir uma senha.\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Toolbar.textTabTableDesign\":\"Projeto da mesa\"",
+          "para": "\"SSE.Views.Toolbar.textTabTableDesign\":\"Design da Tabela\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.DataValidationDialog.txtDate\":\"Dados\"",
+          "para": "\"SSE.Views.DataValidationDialog.txtDate\":\"Data\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.DataValidationDialog.txtTextLength\":\"Tamanho do texto\"",
+          "para": "\"SSE.Views.DataValidationDialog.txtTextLength\":\"Comprimento do texto\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.DataValidationDialog.txtOther\":\"Outro\"",
+          "para": "\"SSE.Views.DataValidationDialog.txtOther\":\"Personalizado\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.txtRowLbls\":\"Etiquetas de linha\"",
+          "para": "\"SSE.Controllers.Main.txtRowLbls\":\"Rótulos de Linha\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.txtStyle_Bad\":\"Mau\"",
+          "para": "\"SSE.Controllers.Main.txtStyle_Bad\":\"Incorreto\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.LeftMenu.textItemEntireCell\":\"Inserir conteúdo da célula\"",
+          "para": "\"SSE.Controllers.LeftMenu.textItemEntireCell\":\"Coincidir conteúdo da célula inteira\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"Common.Views.SearchPanel.textItemEntireCell\":\"Inserir conteúdo da célula\"",
+          "para": "\"Common.Views.SearchPanel.textItemEntireCell\":\"Coincidir conteúdo da célula inteira\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.FileMenuPanels.DocumentInfo.txtComment\":\"Comente\"",
+          "para": "\"SSE.Views.FileMenuPanels.DocumentInfo.txtComment\":\"Comentário\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ProtectDialog.txtFormatCols\":\"Colunas de formato\"",
+          "para": "\"SSE.Views.ProtectDialog.txtFormatCols\":\"Formatar colunas\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.TableDesignTab.txtSlicer\":\"Fatiador\"",
+          "para": "\"SSE.Views.TableDesignTab.txtSlicer\":\"Segmentação de Dados\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Controllers.Main.txtTime\":\"Tempo\"",
+          "para": "\"SSE.Controllers.Main.txtTime\":\"Hora\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"Common.Views.FormatSettingsDialog.txtTime\":\"Tempo\"",
+          "para": "\"Common.Views.FormatSettingsDialog.txtTime\":\"Hora\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.DataValidationDialog.txtTime\":\"Tempo\"",
+          "para": "\"SSE.Views.DataValidationDialog.txtTime\":\"Hora\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.DocumentHolder.txtTime\":\"Tempo\"",
+          "para": "\"SSE.Views.DocumentHolder.txtTime\":\"Hora\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.HeaderFooterDialog.textTime\":\"Tempo\"",
+          "para": "\"SSE.Views.HeaderFooterDialog.textTime\":\"Hora\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.DocumentHolder.txtCellFormat\":\"Formatar celulas\"",
+          "para": "\"SSE.Views.DocumentHolder.txtCellFormat\":\"Formatar células\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.ProtectDialog.txtFormatCells\":\"Formatar celulas\"",
+          "para": "\"SSE.Views.ProtectDialog.txtFormatCells\":\"Formatar células\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"SSE.Views.Toolbar.textFormatCells\":\"Formatar celulas\"",
+          "para": "\"SSE.Views.Toolbar.textFormatCells\":\"Formatar células\"",
+          "ocorrencias": 1
+        }
+      ]
+    }
+  ]
+}

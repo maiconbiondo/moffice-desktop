@@ -27,7 +27,7 @@
                     </Border>
                     <StackPanel VerticalAlignment="Center" Margin="11,0,0,0">
                         <TextBlock Text="Configurações" Style="{StaticResource mOffice.Dialog.Titulo}"/>
-                        <TextBlock Text="Aparência e diagnóstico" Style="{StaticResource mOffice.Dialog.Subtitulo}"/>
+                        <TextBlock Text="Nome, pastas, tema e atualizações" Style="{StaticResource mOffice.Dialog.Subtitulo}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -36,14 +36,40 @@
                     BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0"
                     CornerRadius="0,0,13,13" Padding="22,16">
                 <!-- Só IsCancel, como o mPDF: nada de Click adicional fechando por fora. -->
-                <Button Content="Fechar" HorizontalAlignment="Right" IsCancel="True"
-                        Style="{StaticResource mOffice.Button.DialogCancelar}"/>
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Content="Fechar" HorizontalAlignment="Right" IsCancel="True"
+                            Style="{StaticResource mOffice.Button.DialogCancelar}"/>
+                    <TextBlock Text="Nome, pastas e formato valem para as próximas janelas." TextWrapping="Wrap" VerticalAlignment="Center"
+                               Margin="0,0,12,0" Foreground="{DynamicResource Cor.TextoSecundario}"/>
+                </DockPanel>
             </Border>
 
+            <!-- Corpo rola quando a janela nao cabe na tela (cabecalho e rodape ficam fixos; MaxHeight no code-behind). -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="24,22">
-                <!-- Tema: 3 opcoes ligadas as booleanas do VM (sem converter). Cada set ja' grava no
-                     config E reaplica os tokens ao vivo — nao ha' botao "aplicar". -->
-                <TextBlock Text="Tema" Style="{StaticResource mOffice.Dialog.LabelForte}"/>
+                <!-- Geral (Plano 6, Task 4): nome do autor (autor de comentarios e alteracoes controladas) e tema.
+                     Cada set grava no config na hora e vale para janelas NOVAS. -->
+                <TextBlock Text="Geral" Style="{StaticResource mOffice.Dialog.LabelForte}"/>
+                <TextBlock Text="Nome do autor" Style="{StaticResource mOffice.Dialog.Label}"/>
+                <Grid>
+                    <TextBox Text="{Binding NomeUsuario, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource mOffice.Input}"/>
+                    <TextBlock Text="{Binding NomeEfetivo, Mode=OneWay}" IsHitTestVisible="False" Margin="10,0,10,0" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Cor.TextoSecundario}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding NomeUsuario}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+                <TextBlock Text="Aparece nos comentários e nas alterações controladas." TextWrapping="Wrap" Margin="0,6,0,0" Foreground="{DynamicResource Cor.TextoSecundario}"/>
+
+                <TextBlock Text="Tema" Style="{StaticResource mOffice.Dialog.LabelForte}" Margin="0,16,0,0"/>
                 <UniformGrid Columns="3">
                     <RadioButton GroupName="Tema" Style="{StaticResource mOffice.Segmento}" Margin="0,0,4,0"
                                  Content="Seguir o Windows" IsChecked="{Binding Sistema}"/>
@@ -55,10 +81,53 @@
 
                 <Border BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0" Margin="0,20,0,18"/>
 
-                <!-- Grampo da ponte: diagnostico, desligado por padrao. So' vale pra janelas NOVAS porque
-                     o grampo e' lido quando a ponte de uma janela e' montada. -->
-                <CheckBox Content="Registrar chamadas da ponte no log (diagnóstico; só vale para janelas novas)"
-                          IsChecked="{Binding Grampo}" Style="{StaticResource mOffice.Check}"/>
+                <TextBlock Text="Salvar" Style="{StaticResource mOffice.Dialog.LabelForte}"/>
+                <TextBlock Text="Pasta padrão para salvar documentos novos" Style="{StaticResource mOffice.Dialog.Label}"/>
+                <Grid>
+                    <TextBox Text="{Binding PastaPadraoSalvar, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource mOffice.Input}" Margin="0,0,96,0"/>
+                    <TextBlock Text="{Binding PastaDocumentos, Mode=OneWay}" IsHitTestVisible="False" Margin="10,0,106,0" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Cor.TextoSecundario}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PastaPadraoSalvar}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button HorizontalAlignment="Right" Content="Procurar…" Width="88" Command="{Binding ProcurarPastaSalvarCommand}" Style="{StaticResource mOffice.Button.DialogSuaveAzul}"/>
+                </Grid>
+
+                <TextBlock Text="Formato padrão" Style="{StaticResource mOffice.Dialog.Label}" Margin="0,12,0,4"/>
+                <RadioButton GroupName="FormatoNovo" Style="{StaticResource mOffice.Segmento}" Margin="0,0,0,4"
+                             Content="Formatos do Microsoft Office (.docx, .xlsx, .pptx)" IsChecked="{Binding FormatoOoxml}"/>
+                <RadioButton GroupName="FormatoNovo" Style="{StaticResource mOffice.Segmento}"
+                             Content="OpenDocument (.odt, .ods, .odp)" IsChecked="{Binding FormatoOpenDocument}"/>
+
+                <Border BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0" Margin="0,20,0,18"/>
+
+                <TextBlock Text="Modelos" Style="{StaticResource mOffice.Dialog.LabelForte}"/>
+                <TextBlock Text="Pasta de modelos pessoais" Style="{StaticResource mOffice.Dialog.Label}"/>
+                <Grid>
+                    <TextBox Text="{Binding PastaModelos, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource mOffice.Input}" Margin="0,0,96,0"/>
+                    <TextBlock Text="{Binding PastaModelosPadrao, Mode=OneWay}" IsHitTestVisible="False" Margin="10,0,106,0" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Cor.TextoSecundario}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PastaModelos}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button HorizontalAlignment="Right" Content="Procurar…" Width="88" Command="{Binding ProcurarPastaModelosCommand}" Style="{StaticResource mOffice.Button.DialogSuaveAzul}"/>
+                </Grid>
 
                 <Border BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0" Margin="0,20,0,18"/>
 
@@ -88,7 +157,40 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
+
+                <Border BorderBrush="{DynamicResource Cor.BordaSutil}" BorderThickness="0,1,0,0" Margin="0,20,0,14"/>
+
+                <!-- Diagnostico: coisa de suporte, escondida do usuario final. O link revela a caixa do grampo da ponte
+                     (desligado por padrao; so' vale para janelas novas: o grampo e' lido quando a ponte da janela e' montada). -->
+                <Button Content="Mostrar opções de diagnóstico" HorizontalAlignment="Left"
+                        Command="{Binding MostrarDiagnosticoCommand}"
+                        x:Name="LinkDiagnostico">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource mOffice.Button.DialogNeutro}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DiagnosticoVisivel}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <CheckBox Content="Registrar chamadas da ponte no log (diagnóstico; só vale para janelas novas)"
+                          IsChecked="{Binding Grampo}" x:Name="CaixaGrampo">
+                    <CheckBox.Style>
+                        <Style TargetType="CheckBox" BasedOn="{StaticResource mOffice.Check}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DiagnosticoVisivel}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </CheckBox.Style>
+                </CheckBox>
             </StackPanel>
+            </ScrollViewer>
         </DockPanel>
     </Border>
 </Window>

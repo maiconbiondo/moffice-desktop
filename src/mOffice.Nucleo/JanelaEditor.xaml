@@ -1,6 +1,6 @@
 <Window x:Class="mOffice.Nucleo.JanelaEditor" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        Title="mOffice" Width="1280" Height="800">
+        Title="mOffice" Width="1280" Height="800" WindowStartupLocation="Manual">
     <!-- Linha 0: slot do HOST (BarraDoHost) — a casca pendura ali a FaixaAviso do
          mOffice.Comum. Vazio por padrao: com Content nulo o ContentPresenter mede 0 de altura e a janela fica
          identica ao PoC. Linha 1: o editor. -->

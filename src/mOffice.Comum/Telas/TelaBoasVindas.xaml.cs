@@ -8,7 +8,18 @@ namespace mOffice.Comum.Telas;
 /// assim ele e' testavel sem WPF (BoasVindasTests.ArquivoSolto_FiltraPorPerfil).</summary>
 public partial class TelaBoasVindas : UserControl
 {
-    public TelaBoasVindas() => InitializeComponent();
+    public TelaBoasVindas()
+    {
+        InitializeComponent();
+        DataContextChanged += (_, e) =>
+        {
+            if (e.OldValue is TelaBoasVindasViewModel antigo) antigo.RolarParaModelos -= RolarParaModelos;
+            if (e.NewValue is TelaBoasVindasViewModel novo) novo.RolarParaModelos += RolarParaModelos;
+        };
+    }
+
+    // O "Criar a partir de modelo" do editor leva a' galeria (Plano 6, Task 9).
+    private void RolarParaModelos() => Dispatcher.BeginInvoke(() => PainelModelos.BringIntoView());
 
     private TelaBoasVindasViewModel? Vm => DataContext as TelaBoasVindasViewModel;
 

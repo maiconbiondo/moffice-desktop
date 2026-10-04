@@ -19,6 +19,8 @@
     <Resource Include="Assets\Fonts\*.ttf" />
     <!-- Lista de atribuicao do Sobre (espelho de docs/licencas/INVENTARIO.md). -->
     <EmbeddedResource Include="Dialogos\Atribuicoes.txt" LogicalName="mOffice.Comum.Dialogos.Atribuicoes.txt" />
+    <!-- Icones por TIPO de documento (Plano 6, Task 10; tools/icones/gerar-icones-documento.py). Vao para a saida dos apps e, pelo publish, para {app}\Icones\Documentos\ (o DefaultIcon dos ProgIDs aponta para la). -->
+    <None Include="Icones\Documentos\*.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <InternalsVisibleTo Include="mOffice.Comum.Tests" />
   </ItemGroup>
 </Project>

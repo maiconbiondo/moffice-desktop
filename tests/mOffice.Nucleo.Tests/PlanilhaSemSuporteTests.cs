@@ -64,17 +64,25 @@ public class PlanilhaSemSuporteTests
                 Assert.Equal([JanelaEditor.MensagemNovaPastaDeTrabalho, JanelaEditor.MensagemNovaPastaDeTrabalho], avisos);
 
                 // 1b) "Dados > Do texto/CSV > De arquivo" (web-apps onDataFromText("file"): api.asc_TextFromFileOrUrl(opcoes, cb)):
-                //     o dialogo "csv/txt" responde "cancelado" na hora, sem abrir o dialogo de imagem do host, e a faixa avisa.
+                //     o dialogo e' o "csv/txt" do host (Plano 6, Task 8), nunca o de imagem; cancelado, nenhuma faixa. O caso com
+                //     arquivo escolhido esta' em PonteArquivosDoEditorJanelaTests.
                 avisos.Clear();
                 j.EscolherImagemParaTeste = () => throw new InvalidOperationException("nao devia abrir o dialogo de imagem");
+                var filtros = new List<string>();
+                j.EscolherArquivoParaTeste = (f, _) => { filtros.Add(f); return null; };
                 Assert.Equal("ok", (await j.ExecutarJsAsync(EditorReal.NoEditor("""
                         api.asc_TextFromFileOrUrl(new w.Asc.asc_CTextOptions(), function () { });
                         return "ok";
                     """))).Trim('"'));
-                for (var i = 0; i < 50 && avisos.Count < 1; i++) await Task.Delay(100);
-                Assert.Equal([JanelaEditor.MensagemImportarTexto], avisos);
+                for (var i = 0; i < 50 && filtros.Count < 1; i++) await Task.Delay(100);
+                Assert.Equal(["csv/txt"], filtros);
+                Assert.Empty(avisos);
                 j.EscolherImagemParaTeste = null;
+                j.EscolherArquivoParaTeste = null;
                 avisos.Clear();
+                // Fix 1 da revisao da Task 8: o caminho do vinculo vem do documento -> o host pergunta antes de qualquer E/S; o usuario nega aqui.
+                var perguntas = new List<string>();
+                j.ConfirmarVinculoParaTeste = m => { perguntas.Add(m); return false; };
 
                 // 2) Vinculo externo: uma formula que aponta para outra pasta de trabalho cria a referencia; "Abrir origem"
                 //    (web-apps openLink: api.asc_openExternalReference(ref)) vai a' ponte, que responde "nao abriu" (cb(0)).
@@ -95,8 +103,11 @@ public class PlanilhaSemSuporteTests
                         return String(api.asc_openExternalReference(r));
                     """))).Trim('"'));
                 await Task.Delay(500);
+                _saida.WriteLine("perguntas do vinculo: " + string.Join(" | ", perguntas));
+                Assert.Single(perguntas);
+                Assert.Contains(@"C:\moffice-inexistente\outra.xlsx", perguntas[0]);
 
-                var erros = (await j.ExecutarJsAsync(LerErros)).Trim('"').Replace("\\\"", "\"");
+                var erros =(await j.ExecutarJsAsync(LerErros)).Trim('"').Replace("\\\"", "\"");
                 _saida.WriteLine("erros: " + erros);
                 Assert.Contains("\"js\":[]", erros);                  // nenhum TypeError
                 Assert.DoesNotContain(":-1", erros);                  // nenhum asc_onError critico

@@ -122,7 +122,10 @@ public class SalvarPdfATests
                 Assert.Equal("ok 521", (await j.ExecutarJsAsync(PainelSalvarComo("PDFA"))).Trim('"'));
                 for (var i = 0; i < 300 && exportados.Count < 1; i++) await Task.Delay(100);
                 Assert.Equal("ok 513", (await j.ExecutarJsAsync(PainelSalvarComo("PDF"))).Trim('"'));
-                for (var i = 0; i < 300 && exportados.Count < 2; i++) await Task.Delay(100);
+                // O Exportado sai de dentro da conversao e o AssinarPedido logo DEPOIS (JanelaEditor: PedirAssinatura apos o
+                // EndSave): esperar so' o 2o exportado e ler `assinar` em seguida era corrida (falhou 1 vez em 4 no console,
+                // Task 12 do Plano 6). Espera os dois sinais.
+                for (var i = 0; i < 300 && (exportados.Count < 2 || assinar.Count < 1); i++) await Task.Delay(100);
                 Assert.Null(j.UltimoErro);
                 Assert.Equal([doPainelA, doPainelAssinar], exportados);
                 Assert.Equal([(JanelaEditor.FiltroSalvar(FormatoDocumento.Docx), FormatoDocumento.PdfA),

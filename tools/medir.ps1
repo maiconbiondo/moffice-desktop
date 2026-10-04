@@ -59,7 +59,15 @@ param(
     # (poc/relatorios/medidas-plano2-<data>.txt) e sai.
     [switch]   $Memoria3,
     [string[]] $Arquivos,
-    [int]      $Segundos = 30
+    [int]      $Segundos = 30,
+
+    # Plano 6 / Task 11 (PL-10): cenario de memoria do mPlanilha com 50.001 x 10 celulas SINTETICAS (geradas aqui, nunca
+    # amostra real): abre, classifica por CDP, salva; mede tempo e memoria (WS e privados) do host, do renderer e da
+    # arvore em cada etapa. Porta CDP 9621 e dados em %LOCALAPPDATA%\mOffice-plano6\t11. Usa o exe Release do mPlanilha.
+    [switch]   $Planilha50k,
+    [int]      $Rodadas = 3,
+    [int]      $LinhasDeDados = 50000,   # linhas de dados (alem do cabecalho); so' muda para exercitar documentos maiores
+    [string]   $Rotulo = 'medida'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -300,6 +308,176 @@ if ($Memoria3) {
     Escrever ''
     Escrever "Minimo: $minMb MiB | Maximo: $maxMb MiB | Veredito: $veredito"
     Escrever "Relatorio: $arqPlano2"
+    return
+}
+
+# ============================================================================================================
+# -Planilha50k (Plano 6 / Task 11, PL-10): abre uma planilha SINTETICA de 50.001 x 10, classifica pela API do
+# editor (CDP), salva (Ctrl+S) e mede, em cada etapa: WS e memoria privada do mPlanilha.exe (host), do maior
+# renderer do WebView2 e da arvore inteira (host + todos os msedgewebview2 da pasta de dados da task).
+# Repete -Rodadas vezes (padrao 3) e imprime a MEDIANA de cada numero. Grava
+# poc/relatorios/medidas-plano6-t11-<Rotulo>.txt. So' mexe no que ele proprio lancou (lancar.ps1/encerrar.ps1 da
+# pasta ao-vivo, porta CDP 9621, dados ...\t11).
+# ============================================================================================================
+if ($Planilha50k) {
+    $portaCdp  = 9621
+    $dadosT11  = Join-Path $env:LOCALAPPDATA 'mOffice-plano6\t11'
+    $aoVivo    = Join-Path $PSScriptRoot 'ao-vivo'
+    $cdpMjs    = Join-Path $aoVivo 'cdp.mjs'
+    $arqSaida  = Join-Path $relatorios ("medidas-plano6-t11-$Rotulo.txt")
+    New-Item -ItemType Directory -Path $relatorios -Force | Out-Null
+    New-Item -ItemType Directory -Path $dadosT11 -Force | Out-Null
+
+    # Gera o .xlsx sintetico: A=id, B=texto, C..J = numeros pseudo-aleatorios (semente fixa), 50.000 linhas + cabecalho.
+    function Gerar-Planilha50k {
+        param([string] $Destino, [int] $NLinhas = 50000)
+        Add-Type -AssemblyName System.IO.Compression
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        if (Test-Path $Destino) { Remove-Item -LiteralPath $Destino -Force }
+        $zip = [System.IO.Compression.ZipFile]::Open($Destino, 'Create')
+        try {
+            $utf8 = New-Object System.Text.UTF8Encoding($false)
+            $parte = {
+                param($nome, $texto)
+                $e = $zip.CreateEntry($nome, [System.IO.Compression.CompressionLevel]::Optimal)
+                $w = New-Object System.IO.StreamWriter($e.Open(), $utf8)
+                $w.Write($texto); $w.Dispose()
+            }
+            & $parte '[Content_Types].xml' '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'
+            & $parte '_rels/.rels' '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'
+            & $parte 'xl/workbook.xml' '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Dados" sheetId="1" r:id="rId1"/></sheets></workbook>'
+            & $parte 'xl/_rels/workbook.xml.rels' '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'
+            $e = $zip.CreateEntry('xl/worksheets/sheet1.xml', [System.IO.Compression.CompressionLevel]::Optimal)
+            $w = New-Object System.IO.StreamWriter($e.Open(), $utf8)
+            $w.Write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>')
+            $cols = 'A','B','C','D','E','F','G','H','I','J'
+            $w.Write('<row r="1">')
+            foreach ($c in $cols) { $w.Write('<c r="' + $c + '1" t="inlineStr"><is><t>Col' + $c + '</t></is></c>') }
+            $w.Write('</row>')
+            $rnd = New-Object System.Random 11
+            $sb = New-Object System.Text.StringBuilder
+            $inv = [Globalization.CultureInfo]::InvariantCulture
+            for ($i = 2; $i -le ($NLinhas + 1); $i++) {
+                [void]$sb.Clear()
+                [void]$sb.Append('<row r="').Append($i).Append('"><c r="A').Append($i).Append('"><v>').Append($rnd.Next(1, 1000000)).Append('</v></c>')
+                [void]$sb.Append('<c r="B').Append($i).Append('" t="inlineStr"><is><t>Cliente ').Append($rnd.Next(1, 90000)).Append(' item ').Append($i).Append('</t></is></c>')
+                for ($k = 2; $k -lt 10; $k++) {
+                    [void]$sb.Append('<c r="').Append($cols[$k]).Append($i).Append('"><v>').Append([math]::Round($rnd.NextDouble() * 100000, 2).ToString($inv)).Append('</v></c>')
+                }
+                [void]$sb.Append('</row>')
+                $w.Write($sb.ToString())
+            }
+            $w.Write('</sheetData></worksheet>')
+            $w.Dispose()
+        } finally { $zip.Dispose() }
+    }
+
+    function Cdp-Eval([string] $js) { $ea = $ErrorActionPreference; $ErrorActionPreference = 'Continue'; try { return (& node $cdpMjs $portaCdp eval $js 2>&1 | Out-String).Trim() } finally { $ErrorActionPreference = $ea } }
+
+    function Medir-Etapa {
+        param([int] $PidHost, [string] $Etapa)
+        $h = Get-Process -Id $PidHost -ErrorAction Stop
+        $wv = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" |
+            Where-Object { $_.CommandLine -and $_.CommandLine.IndexOf($dadosT11, [StringComparison]::OrdinalIgnoreCase) -ge 0 } |
+            ForEach-Object { Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue } | Where-Object { $_ })
+        $todos = @($h) + $wv
+        $renderer = ($wv | Sort-Object PrivateMemorySize64 -Descending | Select-Object -First 1)
+        [pscustomobject]@{
+            Etapa = $Etapa
+            HostWsMb   = [math]::Round($h.WorkingSet64 / 1MB, 0)
+            HostPrivMb = [math]::Round($h.PrivateMemorySize64 / 1MB, 0)
+            RendWsMb   = [math]::Round($renderer.WorkingSet64 / 1MB, 0)
+            RendPrivMb = [math]::Round($renderer.PrivateMemorySize64 / 1MB, 0)
+            ArvoreWsMb = [math]::Round((($todos | Measure-Object WorkingSet64 -Sum).Sum) / 1MB, 0)
+            ArvorePrivMb = [math]::Round((($todos | Measure-Object PrivateMemorySize64 -Sum).Sum) / 1MB, 0)
+        }
+    }
+
+    function Mediana($valores) {
+        $o = @($valores | Sort-Object); if ($o.Count -eq 0) { return 0 }
+        if ($o.Count % 2 -eq 1) { return $o[($o.Count - 1) / 2] }
+        return [math]::Round(($o[$o.Count / 2 - 1] + $o[$o.Count / 2]) / 2, 0)
+    }
+
+    # Classifica em ordem decrescente a coluna da celula ativa (A1 ao abrir) expandindo ate a area de dados toda (50.000 linhas),
+    # pela mesma API do botao Classificar do editor (asc_sortColFilter; $ea = expandir).
+    $jsClassificar = 'api.asc_sortColFilter(w.Asc.c_oAscSortOptions.Descending, '''', undefined, undefined, true); return ''ok'';'
+
+    $xlsx = Join-Path $dadosT11 'amostra-50k.xlsx'
+    $resultados = @()
+    for ($r = 1; $r -le $Rodadas; $r++) {
+        Escrever "=== Rodada $r/$Rodadas ($Rotulo) ==="
+        Escrever 'Gerando a planilha sintetica de 50.001 x 10...'
+        Gerar-Planilha50k -Destino $xlsx -NLinhas $LinhasDeDados
+        $tamanhoMb = [math]::Round((Get-Item $xlsx).Length / 1MB, 1)
+        $pidHost = 0
+        try {
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            & (Join-Path $aoVivo 'lancar.ps1') -App mPlanilha -Porta $portaCdp -Dados $dadosT11 -Arquivo $xlsx | Out-Host
+            $pidHost = [int](Get-Content (Join-Path $dadosT11 'pid.txt') -TotalCount 1)
+            $pronto = $false
+            while ($sw.Elapsed.TotalSeconds -lt 240) {
+                Start-Sleep -Milliseconds 500
+                $v = Cdp-Eval 'try { return api.asc_getWorksheetsCount() > 0 && api.asc_getCellInfo().asc_getText() === ''ColA''; } catch (e) { return false; }'
+                if ($v -eq 'true') { $pronto = $true; break }
+            }
+            if (-not $pronto) { throw 'o documento nao ficou pronto em 240 s' }
+            $abrirMs = [int]$sw.Elapsed.TotalMilliseconds
+            Start-Sleep -Seconds 8
+            $eAberto = Medir-Etapa -PidHost $pidHost -Etapa 'aberto'
+
+            $sw.Restart()
+            $v = Cdp-Eval $jsClassificar
+            if ($v -ne '"ok"') { throw "classificar falhou: $v" }
+            $classificarMs = [int]$sw.Elapsed.TotalMilliseconds
+            Start-Sleep -Seconds 8
+            $eClassificado = Medir-Etapa -PidHost $pidHost -Etapa 'classificado'
+
+            # Salva: Ctrl+S; espera o arquivo mudar.
+            $antes = (Get-Item $xlsx).LastWriteTimeUtc; $tamAntes = (Get-Item $xlsx).Length
+            $sw.Restart()
+            & node $cdpMjs $portaCdp teclas 'Control+s' | Out-Null
+            $salvou = $false
+            while ($sw.Elapsed.TotalSeconds -lt 180) {
+                Start-Sleep -Milliseconds 300
+                $i = Get-Item $xlsx
+                if ($i.LastWriteTimeUtc -ne $antes -or $i.Length -ne $tamAntes) { $salvou = $true; break }
+            }
+            if (-not $salvou) { throw 'o arquivo nao foi salvo em 180 s' }
+            $salvarMs = [int]$sw.Elapsed.TotalMilliseconds
+            Start-Sleep -Seconds 8
+            $eSalvo = Medir-Etapa -PidHost $pidHost -Etapa 'salvo'
+
+            $resultados += [pscustomobject]@{ Rodada = $r; XlsxMb = $tamanhoMb; AbrirMs = $abrirMs; ClassificarMs = $classificarMs; SalvarMs = $salvarMs; Etapas = @($eAberto, $eClassificado, $eSalvo) }
+            foreach ($e in @($eAberto, $eClassificado, $eSalvo)) {
+                Escrever ("  {0,-12} host ws={1} priv={2} | renderer ws={3} priv={4} | arvore ws={5} priv={6} MiB" -f $e.Etapa, $e.HostWsMb, $e.HostPrivMb, $e.RendWsMb, $e.RendPrivMb, $e.ArvoreWsMb, $e.ArvorePrivMb)
+            }
+            Escrever ("  abrir {0} ms, classificar {1} ms, salvar {2} ms" -f $abrirMs, $classificarMs, $salvarMs)
+        }
+        finally {
+            & (Join-Path $aoVivo 'encerrar.ps1') -Dados $dadosT11 | Out-Host
+            Start-Sleep -Seconds 3
+        }
+    }
+
+    $linhas = New-Object System.Collections.Generic.List[string]
+    $linhas.Add("# Plano 6 / Task 11 - memoria do mPlanilha com 50.001 x 10 sinteticas - rotulo '$Rotulo' - $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
+    $linhas.Add("Rodadas: $($resultados.Count). Valores em MiB (WS = working set; Priv = memoria privada). Tempos em ms.")
+    foreach ($x in $resultados) {
+        $linhas.Add("Rodada $($x.Rodada): xlsx=$($x.XlsxMb) MB abrir=$($x.AbrirMs) classificar=$($x.ClassificarMs) salvar=$($x.SalvarMs)")
+        foreach ($e in $x.Etapas) { $linhas.Add(("  {0}: hostWs={1} hostPriv={2} rendWs={3} rendPriv={4} arvoreWs={5} arvorePriv={6}" -f $e.Etapa, $e.HostWsMb, $e.HostPrivMb, $e.RendWsMb, $e.RendPrivMb, $e.ArvoreWsMb, $e.ArvorePrivMb)) }
+    }
+    $linhas.Add('MEDIANAS:')
+    $linhas.Add(("  tempos: abrir={0} classificar={1} salvar={2} ms" -f (Mediana ($resultados | ForEach-Object { $_.AbrirMs })), (Mediana ($resultados | ForEach-Object { $_.ClassificarMs })), (Mediana ($resultados | ForEach-Object { $_.SalvarMs }))))
+    foreach ($n in 0..2) {
+        $et = @($resultados | ForEach-Object { $_.Etapas[$n] })
+        $linhas.Add(("  {0}: hostWs={1} hostPriv={2} rendWs={3} rendPriv={4} arvoreWs={5} arvorePriv={6}" -f $et[0].Etapa,
+            (Mediana ($et | ForEach-Object { $_.HostWsMb })), (Mediana ($et | ForEach-Object { $_.HostPrivMb })), (Mediana ($et | ForEach-Object { $_.RendWsMb })),
+            (Mediana ($et | ForEach-Object { $_.RendPrivMb })), (Mediana ($et | ForEach-Object { $_.ArvoreWsMb })), (Mediana ($et | ForEach-Object { $_.ArvorePrivMb }))))
+    }
+    $linhas | Out-File -LiteralPath $arqSaida -Encoding utf8
+    $linhas | ForEach-Object { Escrever $_ }
+    Escrever "Relatorio: $arqSaida"
     return
 }
 

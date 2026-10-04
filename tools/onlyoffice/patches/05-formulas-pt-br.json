@@ -1,0 +1,26 @@
+{
+  "descricao": "Constantes e erros de formula em pt-BR como no Excel (VERDADEIRO/FALSO, #N/D, #VALOR!, #NUM!, #NULO!) e DATADIF (Plano 6, Task 9; achados PL-05/PL-06). So' o que se digita e a exibicao mudam: o xlsx continua gravado em ingles. O erro 'name' fica como no original (#NAME\\?, exibido em ingles): o valor e' usado pelo motor como REGEX e como texto, e nenhuma forma traduzida (#NOME\\?, #NOME? ou #NOME(?=\\?)) e' segura (grava literal cru no xlsx, aceita #NOME/#NOM ou exibe a regex); medido na Task 9, fixes 1 e 2.",
+  "versaoMotor": "9.4.0.129",
+  "arquivos": [
+    {
+      "arquivo": "editors/web-apps/apps/spreadsheeteditor/main/resources/formula-lang/pt-br.json",
+      "trocas": [
+        {
+          "de": "\"CONST_TRUE_FALSE\":{\"t\":\"TRUE\",\"f\":\"FALSE\"}",
+          "para": "\"CONST_TRUE_FALSE\":{\"t\":\"VERDADEIRO\",\"f\":\"FALSO\"}",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"nil\":\"#NULL!\",\"div\":\"#DIV/0!\",\"value\":\"#VALUE!\",\"ref\":\"#REF!\",\"name\":\"#NAME\\\\?\",\"num\":\"#NUM!\",\"na\":\"#N/A\"",
+          "para": "\"nil\":\"#NULO!\",\"div\":\"#DIV/0!\",\"value\":\"#VALOR!\",\"ref\":\"#REF!\",\"name\":\"#NAME\\\\?\",\"num\":\"#NÚM!\",\"na\":\"#N/D\"",
+          "ocorrencias": 1
+        },
+        {
+          "de": "\"DATEDIF\":\"DATEDIF\"",
+          "para": "\"DATEDIF\":\"DATADIF\"",
+          "ocorrencias": 1
+        }
+      ]
+    }
+  ]
+}

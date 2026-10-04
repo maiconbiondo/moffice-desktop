@@ -24,9 +24,19 @@ namespace mOffice.Nucleo.Recuperacao;
 /// arquivo de origem (<c>LastWriteTimeUtc</c> + tamanho) na abertura e depois de cada salvamento bem-sucedido. Na
 /// recuperacao, um original com carimbo DIFERENTE (ou sumido, ou sem carimbo gravado) foi mexido depois da queda
 /// — o usuario reabriu e salvou o original, por exemplo — e a sessao recuperada nao pode grava-lo por cima.
+///
+/// <see cref="Compatibilidade"/> (Plano 6, Task 2; opcional NO FIM, padrao <c>false</c>: <c>sessao.json</c> antigo continua lendo):
+/// a sessao veio de um formato LEGADO (.doc/.xls/.ppt) — <see cref="Origem"/> e' o arquivo antigo, que nunca e' regravado, e
+/// <see cref="Formato"/> e' o moderno do tipo. Sem isto, uma recuperacao tentaria salvar por cima do .doc.
+///
+/// <see cref="TextoCodificacao"/>/<see cref="TextoDelimitador"/>/<see cref="TextoDelimitadorChar"/> (Plano 6, Task 3; opcionais NO FIM, <c>null</c>
+/// num <c>sessao.json</c> antigo): codificacao (ID do editor) e delimitador de uma sessao CSV/TXT. Sem eles uma sessao recuperada de CSV/TXT NAO
+/// sabe com que codificacao o original foi lido, e gravar por cima dele com um palpite trocaria os bytes do arquivo do usuario: ela exige
+/// "Salvar como" (<c>SessaoDocumento.OpcoesTextoDesconhecidas</c>).
 /// </summary>
 public sealed record MetadadosSessao(string Origem, int Formato, string Titulo, bool Novo, string App, int IdUsuario, bool Protegido = false,
-    DateTime? OrigemEscritaUtc = null, long? OrigemTamanho = null)
+    DateTime? OrigemEscritaUtc = null, long? OrigemTamanho = null, bool Compatibilidade = false,
+    int? TextoCodificacao = null, int? TextoDelimitador = null, string? TextoDelimitadorChar = null)
 {
     public const string NomeArquivo = "sessao.json";
 
